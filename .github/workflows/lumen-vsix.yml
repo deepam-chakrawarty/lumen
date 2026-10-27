@@ -84,6 +84,15 @@ jobs:
                   unzip -l "$VSIX" | grep -E 'extension/dist/extension\.js|extension/webview-ui/build/index\.html|extension/LICENSE' 
                   ls -lh "$VSIX"
 
+            - name: Smoke install / activate
+              working-directory: apps/vscode
+              env:
+                  DISPLAY: ":99"
+              run: |
+                  Xvfb :99 -screen 0 1280x800x24 &
+                  sleep 1
+                  bun run smoke:vsix
+
             - name: Upload VSIX artifact
               uses: actions/upload-artifact@v4
               with:
