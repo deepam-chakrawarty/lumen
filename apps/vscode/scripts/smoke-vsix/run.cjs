@@ -33,7 +33,6 @@ async function run() {
 	}
 
 	// Sidebar view
-	const views = pkg.contributes?.views?.["lumen-ActivityBar"] || pkg.contributes?.views?.["lumen-sidebar"] || []
 	const allViews = Object.values(pkg.contributes?.views || {}).flat()
 	assert.ok(
 		allViews.some((v) => v.id === "lumen.SidebarProvider"),

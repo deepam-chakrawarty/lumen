@@ -149,6 +149,7 @@
 				"!!**/hosts/vscode/**",
 				"!!**/test/**",
 				"!!**/*.test.ts",
+				"!!**/scripts/**",
 				"!!src/dev/**",
 				"!!src/extension.ts",
 				"!!src/integrations/git/commit-message-generator.ts",
