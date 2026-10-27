@@ -1,0 +1,94 @@
+# Lumen logical model → upstream provider mapping
+# Verified against live provider docs (2026-10-27). See README "Upstream verification".
+
+providers:
+  nvidia:
+    baseUrlEnv: NVIDIA_BASE_URL
+    apiKeyEnv: NVIDIA_API_KEY
+    defaultBaseUrl: https://integrate.api.nvidia.com/v1
+  dashscope:
+    baseUrlEnv: DASHSCOPE_BASE_URL
+    apiKeyEnv: DASHSCOPE_API_KEY
+    # Legacy compatible-mode URL; workspace-specific maas hosts also work if overridden.
+    defaultBaseUrl: https://dashscope.aliyuncs.com/compatible-mode/v1
+  deepseek:
+    baseUrlEnv: DEEPSEEK_BASE_URL
+    apiKeyEnv: DEEPSEEK_API_KEY
+    defaultBaseUrl: https://api.deepseek.com
+
+# Strength order used by fallback ("next stronger / alternate").
+strengthOrder:
+  - lumen-fast
+  - lumen-standard
+  - lumen-strong
+
+logicalModels:
+  lumen-fast:
+    name: Lumen Fast
+    description: Fast edits and quick completions (NVIDIA Nemotron Nano)
+    tier: fast
+    # Primary: Nemotron 3 Nano 30B-A3B (MoE; ~3B active) — docs.api.nvidia.com LLM APIs
+    routes:
+      - provider: nvidia
+        model: nvidia/nemotron-3-nano-30b-a3b
+      # Alternate Nano family on same NIM endpoint
+      - provider: nvidia
+        model: nvidia/nvidia-nemotron-nano-9b-v2
+      - provider: nvidia
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+
+  lumen-standard:
+    name: Lumen Standard
+    description: Standard coding and multi-file work (NVIDIA Nemotron Mini + mid-tier fallback)
+    tier: standard
+    # Primary: Nemotron Mini 4B Instruct — build.nvidia.com / docs.api.nvidia.com
+    # Note: Mini advertises a small context window; fallbacks are preferred for agent workloads.
+    routes:
+      - provider: nvidia
+        model: nvidia/nemotron-mini-4b-instruct
+      - provider: nvidia
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+      - provider: nvidia
+        model: nvidia/llama-3.3-nemotron-super-49b-v1.5
+
+  lumen-strong:
+    name: Lumen Strong
+    description: Strong coding model (Qwen Coder primary, DeepSeek alternate)
+    tier: strong
+    # Primary: Qwen3-Coder-Plus via DashScope OpenAI-compatible chat
+    routes:
+      - provider: dashscope
+        model: qwen3-coder-plus
+      # Alternate: DeepSeek current Flash alias (V4.1 Flash) — api-docs.deepseek.com
+      - provider: deepseek
+        model: deepseek-flash
+      - provider: deepseek
+        model: deepseek-v4-pro
+
+  lumen-auto:
+    name: Lumen Auto
+    description: Proxy picks among fast / standard / strong via a transparent heuristic
+    tier: auto
+    # Resolved at request time; routes unused directly
+    routes: []
+
+auto:
+  # Heuristic thresholds (chars ≈ tokens/4 rough scale; also uses tokenizer estimate)
+  smallPromptChars: 4000
+  largePromptChars: 24000
+  # If tools/functions present → at least standard
+  toolsBumpTo: lumen-standard
+  # Task signal keywords bump to strong
+  strongSignals:
+    - refactor
+    - architecture
+    - migrate
+    - migration
+    - debug complex
+    - race condition
+    - security
+    - vulnerability
+    - multi-file
+    - codebase
+  # Default when nothing special
+  default: lumen-fast

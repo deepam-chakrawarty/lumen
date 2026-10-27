@@ -1,0 +1,39 @@
+# Plan / quota model (Phase 3 billing hooks into these IDs and limits).
+# Limits are monthly token totals (prompt + completion) per user.
+
+plans:
+  free:
+    name: Free
+    description: Daily coding for individuals — all logical models, modest monthly cap
+    monthlyTokenLimit: 2000000
+    requestsPerMinute: 30
+    # free tier must work for owner daily use
+    allowedTiers:
+      - fast
+      - standard
+      - strong
+      - auto
+
+  edu:
+    name: Education
+    description: Students / educators (INR billing later)
+    monthlyTokenLimit: 5000000
+    requestsPerMinute: 60
+    allowedTiers:
+      - fast
+      - standard
+      - strong
+      - auto
+
+  pro:
+    name: Pro
+    description: Higher monthly quota for power users
+    monthlyTokenLimit: 30000000
+    requestsPerMinute: 120
+    allowedTiers:
+      - fast
+      - standard
+      - strong
+      - auto
+
+defaultPlan: free
