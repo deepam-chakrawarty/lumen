@@ -1,0 +1,150 @@
+# Lumen logical model → upstream provider mapping
+# Verified against live provider docs (2026-10-27). See README "Upstream verification".
+# contextWindow = total tokens the API/model accepts (prompt + completion). Prefer API-served limits over model-card maxima when they differ.
+
+providers:
+  nvidia:
+    baseUrlEnv: NVIDIA_BASE_URL
+    apiKeyEnv: NVIDIA_API_KEY
+    defaultBaseUrl: https://integrate.api.nvidia.com/v1
+  dashscope:
+    baseUrlEnv: DASHSCOPE_BASE_URL
+    apiKeyEnv: DASHSCOPE_API_KEY
+    # Legacy compatible-mode URL; workspace-specific maas hosts also work if overridden.
+    defaultBaseUrl: https://dashscope.aliyuncs.com/compatible-mode/v1
+  deepseek:
+    baseUrlEnv: DEEPSEEK_BASE_URL
+    apiKeyEnv: DEEPSEEK_API_KEY
+    defaultBaseUrl: https://api.deepseek.com
+
+# Strength order used by fallback ("next stronger / alternate").
+strengthOrder:
+  - lumen-fast
+  - lumen-standard
+  - lumen-strong
+
+# Extra tokens reserved beyond prompt + requested max output when judging fit.
+contextSafetyMargin: 1024
+
+# Default max output assumed when the client omits max_tokens / max_completion_tokens.
+defaultMaxOutputTokens: 8192
+
+logicalModels:
+  lumen-fast:
+    name: Lumen Fast
+    description: Fast edits and quick completions (NVIDIA Nemotron Nano)
+    tier: fast
+    # Primary: Nemotron 3 Nano 30B-A3B (MoE; ~3B active) — docs.api.nvidia.com LLM APIs
+    routes:
+      - provider: nvidia
+        model: nvidia/nemotron-3-nano-30b-a3b
+        # API overview: "Maximum input size: 128K tokens" (model card/HF advertise up to 1M / 262K default — use API limit)
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b
+        contextWindow: 128000
+        # Infer schema max_tokens range 1–32768
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b-infer
+        maxOutputTokens: 32768
+      # Alternate Nano family on same NIM endpoint
+      - provider: nvidia
+        model: nvidia/nvidia-nemotron-nano-9b-v2
+        # API overview: "Context length up to 128K" (build.nvidia.com lists 131K — use API 128K)
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nvidia-nemotron-nano-9b-v2
+        contextWindow: 128000
+        # Output "Sequences up to 128K" stated; NIM infer page for this model does not publish a distinct max_tokens cap — omit maxOutputTokens
+      - provider: nvidia
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        # API model summary: "Context Length Up to 1M tokens" / "Maximum context length up to 1M tokens"
+        # (Self-hosted NIM defaults to 262144; hosted API docs state 1M — use API)
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b
+        contextWindow: 1000000
+        # Infer schema max_tokens range 1–32768
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b-infer
+        maxOutputTokens: 32768
+
+  lumen-standard:
+    name: Lumen Standard
+    description: Standard coding and multi-file work (NVIDIA Nemotron Mini + mid-tier fallback)
+    tier: standard
+    # Primary: Nemotron Mini 4B Instruct — build.nvidia.com / docs.api.nvidia.com
+    # Note: Mini's 4k window is skipped by size-aware routing for agent workloads.
+    routes:
+      - provider: nvidia
+        model: nvidia/nemotron-mini-4b-instruct
+        # API: "The model has a maximum of 4096 input tokens."
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-mini-4b-instruct
+        contextWindow: 4096
+        # Infer / API params: max_tokens 1–4096
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-mini-4b-instruct-infer
+        maxOutputTokens: 4096
+      - provider: nvidia
+        model: nvidia/nemotron-3.5-lightning-30b-a3b
+        # Same as fast-tier Lightning entry
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b
+        contextWindow: 1000000
+        maxOutputTokens: 32768
+      - provider: nvidia
+        model: nvidia/llama-3.3-nemotron-super-49b-v1.5
+        # API: "Context length up to 131,072 tokens" / "supports a context length of 128K tokens"
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-llama-3_3-nemotron-super-49b-v1_5
+        contextWindow: 131072
+        # Infer schema max_tokens range 1–65536
+        # Source: https://docs.api.nvidia.com/nim/re/reference/nvidia-llama-3_3-nemotron-super-49b-v1_5-infer
+        maxOutputTokens: 65536
+
+  lumen-strong:
+    name: Lumen Strong
+    description: Strong coding model (Qwen Coder primary, DeepSeek V4 Pro backup, Flash tertiary)
+    tier: strong
+    # Primary: Qwen3-Coder-Plus via DashScope OpenAI-compatible chat
+    # For large prompts, v4-pro is tried immediately after Qwen (before Flash).
+    routes:
+      - provider: dashscope
+        model: qwen3-coder-plus
+        # Model Studio: Context Window 1000000; Max Output Length 65536; Max Input 997952
+        # Source: https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen3-coder-plus
+        # Also: https://www.alibabacloud.com/help/en/model-studio/models (Model Plaza / coder docs)
+        contextWindow: 1000000
+        maxOutputTokens: 65536
+      - provider: deepseek
+        model: deepseek-v4-pro
+        # Official Models & Pricing: CONTEXT LENGTH 1M; MAX OUTPUT MAXIMUM 384K
+        # Source: https://api-docs.deepseek.com/quick_start/pricing/
+        contextWindow: 1000000
+        maxOutputTokens: 384000
+      - provider: deepseek
+        model: deepseek-flash
+        # Official Models & Pricing: CONTEXT LENGTH 1M; MAX OUTPUT MAXIMUM 384K (served by DeepSeek-V4.1-Flash-1017)
+        # Source: https://api-docs.deepseek.com/quick_start/pricing/
+        contextWindow: 1000000
+        maxOutputTokens: 384000
+
+  lumen-auto:
+    name: Lumen Auto
+    description: Proxy picks among fast / standard / strong via a transparent heuristic
+    tier: auto
+    # Resolved at request time; routes unused directly
+    routes: []
+
+auto:
+  # Heuristic thresholds (chars ≈ tokens/4 rough scale; also uses tokenizer estimate)
+  smallPromptChars: 4000
+  largePromptChars: 24000
+  # If tools/functions present → at least standard
+  toolsBumpTo: lumen-standard
+  # When required context (prompt+tools+maxOut+margin) exceeds this, bump straight to strong
+  # so heavy agent prompts land on qwen3-coder-plus before mid-tier NVIDIA routes.
+  strongContextTokens: 128000
+  # Task signal keywords bump to strong
+  strongSignals:
+    - refactor
+    - architecture
+    - migrate
+    - migration
+    - debug complex
+    - race condition
+    - security
+    - vulnerability
+    - multi-file
+    - codebase
+  # Default when nothing special
+  default: lumen-fast
