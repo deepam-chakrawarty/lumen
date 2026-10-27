@@ -69,14 +69,15 @@ buf.yaml
 .clinerules/
 
 # Ignore all webview-ui files except the build directory (https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/frameworks/hello-world-react-cra/.vscodeignore)
-webview-ui/src/**
-webview-ui/public/**
-webview-ui/index.html
-webview-ui/README.md
-webview-ui/package.json
-webview-ui/package-lock.json
-webview-ui/node_modules/**
+webview-ui/**
+!webview-ui/build/**
 **/.gitignore
+
+# Sideload / agent tooling — not needed at runtime
+skills-lock.json
+*.vsix
+CHANGELOG.md
+NOTICE.marketplace.md
 
 # Ignore docs
 docs/**
