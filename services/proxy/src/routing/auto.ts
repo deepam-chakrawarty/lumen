@@ -1,18 +1,21 @@
 import type { ModelsConfig } from "../config"
-import { estimateTokensFromMessages } from "../metering/tokenizer"
+import { estimateRequestPromptTokens } from "../metering/tokenizer"
 
 export type AutoInput = {
 	messages?: unknown
 	tools?: unknown
 	functions?: unknown
 	tool_choice?: unknown
+	/** When set (prompt+tools+maxOut+margin), oversized requests bump to strong. */
+	requiredTokens?: number
 }
 
 /**
  * Transparent lumen-auto heuristic:
- * 1. tools/functions → at least toolsBumpTo (standard)
- * 2. strong task signal keywords → lumen-strong
- * 3. large prompt → lumen-strong; medium → lumen-standard; small → default (fast)
+ * 1. requiredTokens > strongContextTokens → lumen-strong (heavy agent → Qwen)
+ * 2. tools/functions → at least toolsBumpTo (standard)
+ * 3. strong task signal keywords → lumen-strong
+ * 4. large prompt → lumen-strong; medium → lumen-standard; small → default (fast)
  */
 export function resolveAutoModel(config: ModelsConfig, input: AutoInput): string {
 	const auto = config.auto
@@ -24,12 +27,17 @@ export function resolveAutoModel(config: ModelsConfig, input: AutoInput): string
 	const text = flattenMessagesText(input.messages)
 	const lower = text.toLowerCase()
 	const charCount = text.length
-	const tokenEstimate = estimateTokensFromMessages(input.messages)
+	const tokenEstimate = estimateRequestPromptTokens(input)
 
 	const strongHit = auto.strongSignals.some((sig) => lower.includes(sig.toLowerCase()))
+	const oversized =
+		typeof input.requiredTokens === "number" &&
+		input.requiredTokens > (auto.strongContextTokens ?? 128000)
 
 	let pick = auto.default
-	if (charCount >= auto.largePromptChars || tokenEstimate >= Math.ceil(auto.largePromptChars / 4)) {
+	if (oversized) {
+		pick = "lumen-strong"
+	} else if (charCount >= auto.largePromptChars || tokenEstimate >= Math.ceil(auto.largePromptChars / 4)) {
 		pick = "lumen-strong"
 	} else if (
 		charCount >= auto.smallPromptChars ||
@@ -39,7 +47,7 @@ export function resolveAutoModel(config: ModelsConfig, input: AutoInput): string
 		pick = hasTools ? auto.toolsBumpTo : "lumen-standard"
 	}
 
-	if (strongHit) {
+	if (strongHit || oversized) {
 		pick = "lumen-strong"
 	} else if (hasTools && pick === auto.default) {
 		pick = auto.toolsBumpTo

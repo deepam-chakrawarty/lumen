@@ -39,6 +39,7 @@ export const ErrorCodes = {
 	insufficientQuota: "insufficient_quota",
 	rateLimitExceeded: "rate_limit_exceeded",
 	modelNotAllowed: "model_not_allowed",
+	contextLengthExceeded: "context_length_exceeded",
 	upstreamError: "upstream_error",
 	invalidRequest: "invalid_request_error",
 } as const

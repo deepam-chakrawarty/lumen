@@ -7,6 +7,10 @@ import { z } from "zod"
 const RouteSchema = z.object({
 	provider: z.string(),
 	model: z.string(),
+	/** Total context window in tokens (prompt + completion). Required on every route. */
+	contextWindow: z.number().int().positive(),
+	/** Optional documented max generation tokens for this upstream model. */
+	maxOutputTokens: z.number().int().positive().optional(),
 })
 
 const ProviderSchema = z.object({
@@ -25,11 +29,14 @@ const LogicalModelSchema = z.object({
 const ModelsConfigSchema = z.object({
 	providers: z.record(ProviderSchema),
 	strengthOrder: z.array(z.string()),
+	contextSafetyMargin: z.number().int().nonnegative().default(1024),
+	defaultMaxOutputTokens: z.number().int().positive().default(8192),
 	logicalModels: z.record(LogicalModelSchema),
 	auto: z.object({
 		smallPromptChars: z.number(),
 		largePromptChars: z.number(),
 		toolsBumpTo: z.string(),
+		strongContextTokens: z.number().int().positive().default(128000),
 		strongSignals: z.array(z.string()),
 		default: z.string(),
 	}),

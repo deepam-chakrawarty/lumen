@@ -96,7 +96,7 @@ curl -s http://127.0.0.1:8787/v1/usage \
 | GET | `/v1/usage` | plan key | Monthly quota + recent events (includes upstream model) |
 | * | `/admin/*` | `x-admin-secret` | Key management |
 
-OpenAI-style error JSON on **401 / 403 / 429** (`invalid_api_key`, `model_not_allowed`, `insufficient_quota`, `rate_limit_exceeded`).
+OpenAI-style error JSON on **401 / 403 / 429 / 400** (`invalid_api_key`, `model_not_allowed`, `insufficient_quota`, `rate_limit_exceeded`, `context_length_exceeded`).
 
 ## Model routing
 
@@ -106,18 +106,45 @@ Configured in [`config/models.yaml`](./config/models.yaml):
 |---|---|---|
 | `lumen-fast` | NVIDIA `nvidia/nemotron-3-nano-30b-a3b` | other Nano / Lightning on NIM |
 | `lumen-standard` | NVIDIA `nvidia/nemotron-mini-4b-instruct` | Lightning / Nemotron Super |
-| `lumen-strong` | DashScope `qwen3-coder-plus` | DeepSeek `deepseek-flash` → `deepseek-v4-pro` |
+| `lumen-strong` | DashScope `qwen3-coder-plus` | DeepSeek `deepseek-v4-pro` → `deepseek-flash` |
 | `lumen-auto` | heuristic → one of the above | same fallback chain from chosen tier upward |
 
-On upstream **error / timeout / 429**, the proxy retries the next route in the chain (stronger / alternate).
+### Size-aware routing
+
+Every route declares a required `contextWindow` (tokens) and optional `maxOutputTokens` from provider docs.
+
+For each request the proxy estimates:
+
+`required = promptTokens(messages + tools/functions) + max_tokens(or default 8192) + contextSafetyMargin(1024)`
+
+Then **skips** any route with `contextWindow < required` (logged). Explicit tiers and `lumen-auto` both use this filter. If `lumen-auto`’s required tokens exceed `auto.strongContextTokens` (128k), it bumps straight to **strong** so heavy agent prompts land on `qwen3-coder-plus` first (with `deepseek-v4-pro` as the immediate backup).
+
+If **no** route fits → OpenAI-style **400** `context_length_exceeded` (upstream is never called).
+
+### Fallback
+
+Retries the next route on upstream **error / timeout / 429**, and also on **400 / 413 / 422** when the body indicates a context/length overflow (`context_length_exceeded`, “maximum context length”, “too many tokens”, “input is too long”, …). Other 400s stay non-retryable.
+
+### Context windows (docs checked 2026-10-27)
+
+| Model | contextWindow | maxOutputTokens | Source |
+|---|---:|---:|---|
+| `nvidia/nemotron-3-nano-30b-a3b` | 128000 | 32768 | [NIM model](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b) (API max input 128K; card/HF up to 1M/262K — **API limit used**); [infer max_tokens](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b-infer) |
+| `nvidia/nvidia-nemotron-nano-9b-v2` | 128000 | — | [NIM model](https://docs.api.nvidia.com/nim/reference/nvidia-nvidia-nemotron-nano-9b-v2) (“up to 128K”; build.nvidia.com 131K — **API 128K used**). Infer page does not publish a distinct max_tokens cap. |
+| `nvidia/nemotron-3.5-lightning-30b-a3b` | 1000000 | 32768 | [NIM model](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b) (hosted API “up to 1M”; self-hosted NIM default 262144); [infer](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b-infer) |
+| `nvidia/nemotron-mini-4b-instruct` | 4096 | 4096 | [NIM model](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-mini-4b-instruct); [infer](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-mini-4b-instruct-infer) |
+| `nvidia/llama-3.3-nemotron-super-49b-v1.5` | 131072 | 65536 | [NIM model](https://docs.api.nvidia.com/nim/reference/nvidia-llama-3_3-nemotron-super-49b-v1_5); [infer](https://docs.api.nvidia.com/nim/re/reference/nvidia-llama-3_3-nemotron-super-49b-v1_5-infer) |
+| `qwen3-coder-plus` | 1000000 | 65536 | [Model Studio qwen3-coder-plus](https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen3-coder-plus) |
+| `deepseek-flash` | 1000000 | 384000 | [Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/) |
+| `deepseek-v4-pro` | 1000000 | 384000 | [Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/) |
 
 ### Upstream verification (docs checked 2026-10-27)
 
 | Provider | Base URL | Model IDs | Source |
 |---|---|---|---|
 | NVIDIA NIM | `https://integrate.api.nvidia.com/v1` | `nvidia/nemotron-3-nano-30b-a3b`, `nvidia/nvidia-nemotron-nano-9b-v2`, `nvidia/nemotron-mini-4b-instruct`, `nvidia/nemotron-3.5-lightning-30b-a3b`, `nvidia/llama-3.3-nemotron-super-49b-v1.5` | [docs.api.nvidia.com/nim/reference/llm-apis](https://docs.api.nvidia.com/nim/reference/llm-apis), [build.nvidia.com](https://build.nvidia.com), [nemotron-mini docs](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-mini-4b-instruct-infer) |
-| DashScope / Model Studio | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen3-coder-plus` | [Alibaba OpenAI-compatible chat](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope); workspace `*.maas.aliyuncs.com` hosts also supported via `DASHSCOPE_BASE_URL` |
-| DeepSeek | `https://api.deepseek.com` | `deepseek-flash`, `deepseek-v4-pro` | [api-docs.deepseek.com](https://api-docs.deepseek.com/) (legacy `deepseek-chat` retired mid-2026) |
+| DashScope / Model Studio | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen3-coder-plus` | [qwen3-coder-plus](https://docs.modelstudio.console.alibabacloud.com/en/model-studio/qwen3-coder-plus); [OpenAI-compatible chat](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope) |
+| DeepSeek | `https://api.deepseek.com` | `deepseek-flash`, `deepseek-v4-pro` | [Models & Pricing](https://api-docs.deepseek.com/quick_start/pricing/) |
 
 Env keys used: `NVIDIA_API_KEY`, `DASHSCOPE_API_KEY`, `DEEPSEEK_API_KEY` (never logged or returned).
 
@@ -148,7 +175,7 @@ bun install
 bun test
 ```
 
-Integration tests spin up an in-process mock upstream covering streaming, tool calls, fallback, quota exceeded, and bad keys — no real provider keys required.
+Integration tests spin up an in-process mock upstream covering streaming, tool calls, fallback, quota exceeded, bad keys, size-skip of Mini, context-error rollover, heavy-agent → Qwen/DeepSeek Pro, and nothing-fits `context_length_exceeded` — no real provider keys required.
 
 ## Docker
 

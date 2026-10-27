@@ -1,28 +1,51 @@
 import type { ModelsConfig, UpstreamRoute } from "../config"
 import { resolveAutoModel, type AutoInput } from "./auto"
+import {
+	buildSizeBudget,
+	filterRoutesByContextSize,
+	type SizeBudget,
+} from "./context"
 
 export type ResolvedRoutePlan = {
 	requestedModel: string
 	logicalModel: string
 	tier: string
 	routes: UpstreamRoute[]
+	skippedForSize: Array<{ route: UpstreamRoute; reason: string; contextWindow: number }>
+	budget: SizeBudget
 	autoResolvedFrom?: string
+}
+
+export type ResolveRoutePlanOptions = {
+	promptTokens: number
+	maxOutputTokens: number
 }
 
 /**
  * Build ordered upstream routes for a logical model, including cross-tier
  * fallback to the next stronger logical model when routes are exhausted.
+ * Routes whose contextWindow is too small for the estimated request are skipped.
  */
 export function resolveRoutePlan(
 	config: ModelsConfig,
 	requestedModel: string,
 	autoInput: AutoInput,
+	opts: ResolveRoutePlanOptions,
 ): ResolvedRoutePlan {
+	const budget = buildSizeBudget(
+		opts.promptTokens,
+		opts.maxOutputTokens,
+		config.contextSafetyMargin ?? 1024,
+	)
+
 	let logicalModel = requestedModel
 	let autoResolvedFrom: string | undefined
 
 	if (logicalModel === "lumen-auto") {
-		logicalModel = resolveAutoModel(config, autoInput)
+		logicalModel = resolveAutoModel(config, {
+			...autoInput,
+			requiredTokens: budget.requiredTokens,
+		})
 		autoResolvedFrom = "lumen-auto"
 	}
 
@@ -31,13 +54,16 @@ export function resolveRoutePlan(
 		throw new ModelNotFoundError(requestedModel)
 	}
 
-	const routes = collectFallbackRoutes(config, logicalModel)
+	const allRoutes = collectFallbackRoutes(config, logicalModel)
+	const { routes, skipped } = filterRoutesByContextSize(allRoutes, budget)
 
 	return {
 		requestedModel,
 		logicalModel,
 		tier: def.tier,
 		routes,
+		skippedForSize: skipped,
+		budget,
 		autoResolvedFrom,
 	}
 }
@@ -67,6 +93,17 @@ export class ModelNotFoundError extends Error {
 	constructor(public readonly model: string) {
 		super(`The model '${model}' does not exist`)
 		this.name = "ModelNotFoundError"
+	}
+}
+
+export class ContextLengthExceededError extends Error {
+	constructor(
+		message: string,
+		public readonly budget: SizeBudget,
+		public readonly skipped: ResolvedRoutePlan["skippedForSize"],
+	) {
+		super(message)
+		this.name = "ContextLengthExceededError"
 	}
 }
 

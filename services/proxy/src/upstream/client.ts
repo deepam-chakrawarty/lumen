@@ -1,6 +1,7 @@
 import type { AppConfig, ModelsConfig, UpstreamRoute } from "../config"
 import { resolveProviderEndpoint } from "../config"
 import { log } from "../logger"
+import { isContextLengthError } from "../routing/context"
 
 export type ChatCompletionBody = Record<string, unknown>
 
@@ -77,12 +78,14 @@ export async function callUpstreamChat(
 
 		if (!res.ok) {
 			const bodyText = await res.text().catch(() => "")
-			const retryable = isRetryableStatus(res.status)
+			const contextOverflow = isContextLengthError(res.status, bodyText)
+			const retryable = isRetryableStatus(res.status) || contextOverflow
 			log.warn("upstream error", {
 				provider: route.provider,
 				model: route.model,
 				status: res.status,
 				retryable,
+				contextOverflow,
 			})
 			return {
 				ok: false,
@@ -171,6 +174,7 @@ export async function callWithFallback(
 			failedProvider: route.provider,
 			failedModel: route.model,
 			status: result.status,
+			contextOverflow: isContextLengthError(result.status, result.bodyText),
 		})
 	}
 

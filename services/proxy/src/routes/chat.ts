@@ -5,7 +5,11 @@ import { newId } from "../auth/keys"
 import { ErrorCodes, jsonError } from "../errors"
 import { log } from "../logger"
 import { enforceQuotaOrError, requirePlanKey } from "../middleware/auth"
-import { estimateCompletionTokens, estimateTokensFromMessages } from "../metering/tokenizer"
+import {
+	estimateCompletionTokens,
+	estimateRequestPromptTokens,
+	resolveRequestedMaxOutputTokens,
+} from "../metering/tokenizer"
 import { assertModelAllowed } from "../metering/quotas"
 import { ModelNotFoundError, resolveRoutePlan } from "../routing/router"
 import {
@@ -38,14 +42,29 @@ export function chatRoutes(config: AppConfig, db: AsyncDb) {
 			})
 		}
 
+		const promptEstimate = estimateRequestPromptTokens({
+			messages: body.messages,
+			tools: body.tools,
+			functions: body.functions,
+		})
+		const maxOutputTokens = resolveRequestedMaxOutputTokens(
+			body,
+			config.models.defaultMaxOutputTokens ?? 8192,
+		)
+
 		let plan
 		try {
-			plan = resolveRoutePlan(config.models, requestedModel, {
-				messages: body.messages,
-				tools: body.tools,
-				functions: body.functions,
-				tool_choice: body.tool_choice,
-			})
+			plan = resolveRoutePlan(
+				config.models,
+				requestedModel,
+				{
+					messages: body.messages,
+					tools: body.tools,
+					functions: body.functions,
+					tool_choice: body.tool_choice,
+				},
+				{ promptTokens: promptEstimate, maxOutputTokens },
+			)
 		} catch (err) {
 			if (err instanceof ModelNotFoundError) {
 				return jsonError(c, 404, err.message, {
@@ -67,7 +86,29 @@ export function chatRoutes(config: AppConfig, db: AsyncDb) {
 			})
 		}
 
-		const promptEstimate = estimateTokensFromMessages(body.messages)
+		if (plan.skippedForSize.length > 0) {
+			log.info("routes skipped for context size", {
+				logicalModel: plan.logicalModel,
+				requiredTokens: plan.budget.requiredTokens,
+				skipped: plan.skippedForSize.map(
+					(s) => `${s.route.provider}/${s.route.model}(cw=${s.contextWindow})`,
+				),
+			})
+		}
+
+		if (plan.routes.length === 0) {
+			return jsonError(
+				c,
+				400,
+				`This model's maximum context length was exceeded (estimated ${plan.budget.requiredTokens} tokens required; no upstream route fits).`,
+				{
+					type: "invalid_request_error",
+					code: ErrorCodes.contextLengthExceeded,
+					param: "messages",
+				},
+			)
+		}
+
 		const quota = await enforceQuotaOrError(c, config, db, promptEstimate)
 		if (quota.error) return quota.error
 

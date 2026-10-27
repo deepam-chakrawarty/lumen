@@ -37,6 +37,36 @@ export function estimateTokensFromMessages(messages: unknown): number {
 	return total
 }
 
+/** Estimate tokens for tools / functions schemas attached to the request. */
+export function estimateTokensFromTools(tools: unknown, functions?: unknown): number {
+	let total = 0
+	if (tools != null) total += estimateTokensFromText(JSON.stringify(tools))
+	if (functions != null) total += estimateTokensFromText(JSON.stringify(functions))
+	return total
+}
+
+/**
+ * Prompt-side token estimate for routing: messages + tool/function schemas.
+ * Does not include requested max output or safety margin.
+ */
+export function estimateRequestPromptTokens(input: {
+	messages?: unknown
+	tools?: unknown
+	functions?: unknown
+}): number {
+	return estimateTokensFromMessages(input.messages) + estimateTokensFromTools(input.tools, input.functions)
+}
+
+export function resolveRequestedMaxOutputTokens(
+	body: Record<string, unknown>,
+	defaultMaxOutputTokens: number,
+): number {
+	const raw = body.max_tokens ?? body.max_completion_tokens
+	const n = typeof raw === "number" ? raw : Number(raw)
+	if (Number.isFinite(n) && n > 0) return Math.floor(n)
+	return defaultMaxOutputTokens
+}
+
 function estimateTokensFromContent(content: unknown): number {
 	if (typeof content === "string") return estimateTokensFromText(content)
 	if (Array.isArray(content)) {
