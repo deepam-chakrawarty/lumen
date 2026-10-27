@@ -6,10 +6,12 @@ import { newId } from "./auth/keys"
 import { jsonError, ErrorCodes } from "./errors"
 import { log } from "./logger"
 import { adminRoutes } from "./admin/routes"
+import { billingRoutes } from "./routes/billing"
 import { chatRoutes } from "./routes/chat"
 import { healthRoutes } from "./routes/health"
 import { modelsRoutes } from "./routes/models"
 import { usageRoutes } from "./routes/usage"
+import { webhookRoutes } from "./routes/webhooks"
 
 export function createApp(config: AppConfig, db: AsyncDb) {
 	const app = new Hono()
@@ -35,6 +37,8 @@ export function createApp(config: AppConfig, db: AsyncDb) {
 	app.route("/v1", chatRoutes(config, db))
 	app.route("/v1", usageRoutes(config, db))
 	app.route("/admin", adminRoutes(config, db))
+	app.route("/billing", billingRoutes(config, db))
+	app.route("/webhooks", webhookRoutes(config, db))
 
 	app.notFound((c) =>
 		jsonError(c, 404, `Unknown route ${c.req.method} ${c.req.path}`, {

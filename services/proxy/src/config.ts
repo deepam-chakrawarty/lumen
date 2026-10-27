@@ -48,18 +48,38 @@ const PlanSchema = z.object({
 	monthlyTokenLimit: z.number().int().positive(),
 	requestsPerMinute: z.number().int().positive(),
 	allowedTiers: z.array(z.enum(["fast", "standard", "strong", "auto"])),
+	pricePaise: z.number().int().nonnegative().default(0),
+	currency: z.string().default("INR"),
+	paid: z.boolean().default(false),
+	eduOnly: z.boolean().optional(),
+})
+
+const BillingConfigSchema = z.object({
+	currency: z.string().default("INR"),
+	gstRatePercent: z.number().nonnegative().default(18),
+	pricesGstInclusive: z.boolean().default(true),
+	gracePeriodDays: z.number().int().nonnegative().default(3),
+	interval: z.enum(["monthly", "yearly"]).default("monthly"),
+	subscriptionTotalCount: z.number().int().positive().default(120),
+	publicBaseUrl: z.string().default("http://localhost:8787"),
+	copyLocale: z.string().default("en-IN"),
 })
 
 const PlansConfigSchema = z.object({
 	plans: z.record(PlanSchema),
 	defaultPlan: z.string(),
+	billing: BillingConfigSchema.default({}),
+	eduEmailAllowlist: z.array(z.string()).default([".edu.in", ".ac.in"]),
 })
 
 export type ModelsConfig = z.infer<typeof ModelsConfigSchema>
 export type PlansConfig = z.infer<typeof PlansConfigSchema>
 export type PlanDefinition = z.infer<typeof PlanSchema>
+export type BillingConfig = z.infer<typeof BillingConfigSchema>
 export type LogicalModelId = string
 export type UpstreamRoute = z.infer<typeof RouteSchema>
+
+export type PaymentProviderId = "razorpay" | "cashfree" | "mock"
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const PROXY_ROOT = resolve(here, "..")
@@ -101,6 +121,31 @@ export type AppConfig = {
 	upstreamConnectTimeoutMs: number
 	models: ModelsConfig
 	plans: PlansConfig
+	/** Public URL used for checkout return / webhook docs (no trailing slash). */
+	publicBaseUrl: string
+	paymentProvider: PaymentProviderId
+	paymentTestMode: boolean
+	mailer: "console" | "smtp"
+	smtp: {
+		host: string
+		port: number
+		user: string
+		pass: string
+		from: string
+	}
+	razorpay: {
+		keyId: string
+		keySecret: string
+		webhookSecret: string
+	}
+	cashfree: {
+		clientId: string
+		clientSecret: string
+		webhookSecret: string
+		apiVersion: string
+		env: "sandbox" | "production"
+	}
+	sessionSecret: string
 }
 
 function readYamlFile(path: string): unknown {
@@ -117,11 +162,27 @@ export function loadPlansConfig(path = process.env.PLANS_CONFIG): PlansConfig {
 	return PlansConfigSchema.parse(readYamlFile(resolved))
 }
 
+function parsePaymentProvider(raw: string | undefined): PaymentProviderId {
+	const v = (raw || "razorpay").toLowerCase()
+	if (v === "razorpay" || v === "cashfree" || v === "mock") return v
+	throw new Error(`Unknown PAYMENT_PROVIDER '${raw}'. Use razorpay | cashfree | mock`)
+}
+
 export function loadConfig(): AppConfig {
 	const models = loadModelsConfig()
 	const plans = loadPlansConfig()
 	const adminSecret = process.env.ADMIN_SECRET || ""
 	const keyPepper = process.env.KEY_PEPPER || "lumen-dev-pepper"
+	const publicBaseUrl = (
+		process.env.PUBLIC_BASE_URL ||
+		plans.billing.publicBaseUrl ||
+		"http://localhost:8787"
+	).replace(/\/$/, "")
+
+	const cashfreeEnv =
+		(process.env.CASHFREE_ENV || "sandbox").toLowerCase() === "production"
+			? "production"
+			: "sandbox"
 
 	return {
 		port: Number(process.env.PORT || 8787),
@@ -134,7 +195,37 @@ export function loadConfig(): AppConfig {
 		upstreamTimeoutMs: Number(process.env.UPSTREAM_TIMEOUT_MS || 60_000),
 		upstreamConnectTimeoutMs: Number(process.env.UPSTREAM_CONNECT_TIMEOUT_MS || 10_000),
 		models,
-		plans,
+		plans: {
+			...plans,
+			billing: {
+				...plans.billing,
+				publicBaseUrl,
+			},
+		},
+		publicBaseUrl,
+		paymentProvider: parsePaymentProvider(process.env.PAYMENT_PROVIDER),
+		paymentTestMode: (process.env.PAYMENT_TEST_MODE ?? "true").toLowerCase() !== "false",
+		mailer: (process.env.MAILER || "console").toLowerCase() === "smtp" ? "smtp" : "console",
+		smtp: {
+			host: process.env.SMTP_HOST || "",
+			port: Number(process.env.SMTP_PORT || 587),
+			user: process.env.SMTP_USER || "",
+			pass: process.env.SMTP_PASS || "",
+			from: process.env.SMTP_FROM || "Lumen <noreply@localhost>",
+		},
+		razorpay: {
+			keyId: process.env.RAZORPAY_KEY_ID || "",
+			keySecret: process.env.RAZORPAY_KEY_SECRET || "",
+			webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
+		},
+		cashfree: {
+			clientId: process.env.CASHFREE_CLIENT_ID || "",
+			clientSecret: process.env.CASHFREE_CLIENT_SECRET || "",
+			webhookSecret: process.env.CASHFREE_WEBHOOK_SECRET || "",
+			apiVersion: process.env.CASHFREE_API_VERSION || "2026-01-01",
+			env: cashfreeEnv,
+		},
+		sessionSecret: process.env.SESSION_SECRET || keyPepper,
 	}
 }
 
