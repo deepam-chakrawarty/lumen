@@ -7,7 +7,7 @@ const prefix = name === "claude-dev" ? "cline" : name
  * List of commands with the name of the extension they are registered under.
  * These should match the command IDs defined in package.json.
  * For Nightly build, the publish script has updated all the commands to use the extension name as prefix.
- * In production, all commands are registered under "cline" for consistency.
+ * Lumen uses package name as command prefix (lumen.*).
  */
 const ClineCommands = {
 	PlusButton: prefix + ".plusButtonClicked",

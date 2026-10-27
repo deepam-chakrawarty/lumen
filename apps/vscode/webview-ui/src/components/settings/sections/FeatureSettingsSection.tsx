@@ -66,7 +66,7 @@ const editorFeatures: FeatureToggle[] = [
 	{
 		id: "worktrees",
 		label: "Worktrees",
-		description: "Enables git worktree management for running parallel Cline tasks.",
+		description: "Enables git worktree management for running parallel Lumen tasks.",
 		stateKey: "worktreesEnabled",
 		settingKey: "worktreesEnabled",
 	},

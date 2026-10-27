@@ -106,12 +106,12 @@ export abstract class WebviewProvider {
 				<meta name="theme-color" content="#000000">
 				<link rel="stylesheet" type="text/css" href="${stylesUrl}">
 				<meta http-equiv="Content-Security-Policy" content="default-src 'none';
-					connect-src https://*.posthog.com https://*.cline.bot; 
+					connect-src ${this.getCspSource()} http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*; 
 					font-src ${this.getCspSource()} data:; 
 					style-src ${this.getCspSource()} 'unsafe-inline'; 
 					img-src ${this.getCspSource()} https: data:; 
 					script-src 'nonce-${nonce}' 'unsafe-eval';">
-				<title>Cline</title>
+				<title>Lumen</title>
 			</head>
 			<body>
 				<noscript>You need to enable JavaScript to run this app.</noscript>

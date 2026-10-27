@@ -305,13 +305,16 @@ class ClineEndpoint {
 		}
 
 		// Standard mode: use built-in environment URLs
+		// Lumen fork: do not call upstream Cline cloud (app/api.cline.bot).
+		// Point all built-in environments at loopback placeholders until a Lumen
+		// cloud/proxy exists. Self-hosted mode via endpoints.json still works.
 		switch (this.environment) {
 			case Environment.staging:
 				return {
 					environment: Environment.staging,
-					appBaseUrl: "https://staging-app.cline.bot",
-					apiBaseUrl: "https://core-api.staging.int.cline.bot",
-					mcpBaseUrl: "https://core-api.staging.int.cline.bot/v1/mcp",
+					appBaseUrl: "http://127.0.0.1:9",
+					apiBaseUrl: "http://127.0.0.1:9",
+					mcpBaseUrl: "http://127.0.0.1:9/v1/mcp",
 				}
 			case Environment.local:
 				// The local fixture's app and API share one listener. Resolve them together.
@@ -331,14 +334,14 @@ class ClineEndpoint {
 					environment: Environment.local,
 					appBaseUrl: "http://localhost:3000",
 					apiBaseUrl: "http://localhost:7777",
-					mcpBaseUrl: "https://api.cline.bot/v1/mcp",
+					mcpBaseUrl: "http://127.0.0.1:9/v1/mcp",
 				}
 			default:
 				return {
 					environment: Environment.production,
-					appBaseUrl: "https://app.cline.bot",
-					apiBaseUrl: "https://api.cline.bot",
-					mcpBaseUrl: "https://api.cline.bot/v1/mcp",
+					appBaseUrl: "http://127.0.0.1:9",
+					apiBaseUrl: "http://127.0.0.1:9",
+					mcpBaseUrl: "http://127.0.0.1:9/v1/mcp",
 				}
 		}
 	}

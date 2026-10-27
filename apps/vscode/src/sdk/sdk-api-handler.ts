@@ -118,7 +118,7 @@ export function buildSdkProviderConfig(
 	mode: Mode,
 	options?: BuildApiHandlerOptions,
 ): ProviderConfig {
-	const providerId = (mode === "plan" ? configuration.planModeApiProvider : configuration.actModeApiProvider) ?? "cline"
+	const providerId = (mode === "plan" ? configuration.planModeApiProvider : configuration.actModeApiProvider) ?? "lumen"
 
 	const apiKey = resolveApiKey(providerId, configuration)
 	const modelId = resolveModelId(providerId, mode, configuration)

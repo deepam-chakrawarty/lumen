@@ -19,7 +19,7 @@ const AboutSection = ({ version, extensionVariant, renderSectionHeader }: AboutS
 			<Section>
 				<div className="flex px-4 flex-col gap-2">
 					<h2 className="text-lg font-semibold">
-						Cline v{version}
+						Lumen v{version}
 						{extensionVariant && (
 							<span className="ml-2 text-sm font-normal text-description">
 								({VARIANT_LABELS[extensionVariant]})
@@ -36,7 +36,7 @@ const AboutSection = ({ version, extensionVariant, renderSectionHeader }: AboutS
 					<p>
 						<VSCodeLink href="https://x.com/cline">X</VSCodeLink>
 						{" • "}
-						<VSCodeLink href="https://discord.gg/cline">Discord</VSCodeLink>
+						<VSCodeLink href="https://github.com/deepam-chakrawarty/lumen">Discord</VSCodeLink>
 						{" • "}
 						<VSCodeLink href="https://www.reddit.com/r/cline/"> r/cline</VSCodeLink>
 					</p>
@@ -55,9 +55,11 @@ const AboutSection = ({ version, extensionVariant, renderSectionHeader }: AboutS
 
 					<h3 className="text-md font-semibold">Resources</h3>
 					<p>
-						<VSCodeLink href="https://docs.cline.bot/">Documentation</VSCodeLink>
+						<VSCodeLink href="https://github.com/deepam-chakrawarty/lumen/">Documentation</VSCodeLink>
 						{" • "}
-						<VSCodeLink href="https://cline.bot/">https://cline.bot</VSCodeLink>
+						<VSCodeLink href="https://github.com/deepam-chakrawarty/lumen/">
+							https://github.com/deepam-chakrawarty/lumen
+						</VSCodeLink>
 					</p>
 				</div>
 			</Section>

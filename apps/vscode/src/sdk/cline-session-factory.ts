@@ -32,6 +32,7 @@ import type { ApiConfiguration } from "@shared/api"
 import { ClineClient } from "@shared/cline"
 import type { HistoryItem } from "@shared/HistoryItem"
 import { DEFAULT_LANGUAGE_SETTINGS, getLanguageKey, type LanguageDisplay } from "@shared/Languages"
+import { getLumenVsCodeSettings, LUMEN_DEFAULT_PROXY_BASE_URL } from "@shared/lumen-settings"
 import { toLegacyApiProvider } from "@shared/model-catalog/provider-helpers"
 import { Logger } from "@shared/services/Logger"
 import type { Settings } from "@shared/storage/state-keys"
@@ -558,6 +559,18 @@ export function resolveApiKey(providerId: string, config: ApiConfiguration): str
 		Logger.warn(`[SessionFactory] Failed to read ${providerId} API key from providers.json`)
 	}
 
+	// Lumen plan key may also be set via VS Code settings (`lumen.planKey`).
+	if (providerId === "lumen") {
+		try {
+			const planKey = getLumenVsCodeSettings().planKey
+			if (planKey) {
+				return planKey
+			}
+		} catch {
+			// vscode settings unavailable (unit tests without host)
+		}
+	}
+
 	return undefined
 }
 
@@ -842,6 +855,19 @@ export function resolveBaseUrl(providerId: string, config: ApiConfiguration): st
 		}
 	} catch {
 		Logger.warn(`[SessionFactory] Failed to read ${providerId} base URL from providers.json`)
+	}
+
+	// Lumen proxy base URL from VS Code settings (`lumen.proxyBaseUrl`), then builtin default.
+	if (providerId === "lumen") {
+		try {
+			const fromSettings = normalizeSdkBaseUrl(providerId, getLumenVsCodeSettings().proxyBaseUrl)
+			if (fromSettings) {
+				return fromSettings
+			}
+		} catch {
+			// vscode settings unavailable (unit tests without host)
+		}
+		return LUMEN_DEFAULT_PROXY_BASE_URL
 	}
 
 	return undefined

@@ -926,6 +926,55 @@ const OPENAI_COMPATIBLE_SPEC_OVERRIDES: BuiltinSpecOverride[] = [
 		defaults: { baseUrl: "https://api.aiand.com/v1" },
 	},
 	{
+		id: "lumen",
+		name: "Lumen",
+		description:
+			"Lumen plan proxy — OpenAI-compatible chat completions with logical routing models",
+		family: "openai-compatible",
+		popular: 0,
+		capabilities: ["tools"],
+		defaultModelId: "lumen-auto",
+		apiKeyEnv: ["LUMEN_API_KEY", "LUMEN_PLAN_KEY"],
+		defaults: { baseUrl: "http://localhost:8787/v1" },
+		modelsFactory: () => {
+			const mk = (
+				id: string,
+				name: string,
+				description: string,
+			): ModelInfo => ({
+				id,
+				name,
+				description,
+				contextWindow: 128_000,
+				maxInputTokens: 128_000,
+				maxTokens: 8192,
+				capabilities: ["streaming", "tools"],
+			});
+			return {
+				"lumen-auto": mk(
+					"lumen-auto",
+					"Lumen Auto",
+					"Proxy picks the best route for the task",
+				),
+				"lumen-fast": mk(
+					"lumen-fast",
+					"Lumen Fast",
+					"Fast edits and quick completions",
+				),
+				"lumen-standard": mk(
+					"lumen-standard",
+					"Lumen Standard",
+					"Standard coding and multi-file work",
+				),
+				"lumen-strong": mk(
+					"lumen-strong",
+					"Lumen Strong",
+					"Strong fallback for hard problems",
+				),
+			};
+		},
+	},
+	{
 		id: "aihubmix",
 		name: "AI Hub Mix",
 		description: "AI model aggregator",
