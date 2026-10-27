@@ -73,12 +73,15 @@ cd apps/vscode && bun run test:unit
 ## Package a `.vsix`
 
 ```sh
+# From repo root (builds SDK first if you changed it)
+bun run build:sdk
+
 cd apps/vscode
-bun run package
-bunx vsce package --no-dependencies
+bun run package:vsix          # → lumen-<version>.vsix (e.g. lumen-0.1.0.vsix)
+bun run smoke:vsix            # extract + @vscode/test-electron activate smoke
 ```
 
-The `.vsix` lands under `apps/vscode/`. Install with “Install from VSIX…” in VS Code.
+Sideload steps for first users: [`docs/SIDELOAD.md`](./SIDELOAD.md). CI: `.github/workflows/lumen-vsix.yml` (tags `v*` + workflow_dispatch).
 
 Marketplace publisher ID (`deepam-chakrawarty`) is a placeholder until you create a real VS Marketplace publisher — update `publisher` in `apps/vscode/package.json` before publishing.
 
