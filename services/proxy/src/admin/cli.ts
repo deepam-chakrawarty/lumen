@@ -16,7 +16,7 @@ function usage(): never {
 	console.log(`Lumen proxy admin CLI
 
 Commands:
-  create-key --user <id> --plan <free|edu|pro> [--email <email>] [--name <display>] [--label <label>]
+  create-key --user <id> --plan <free|edu|pro|pro_plus> [--email <email>] [--name <display>] [--label <label>]
   list-keys [--include-revoked]
   revoke-key <keyIdOrPrefix>
 `)

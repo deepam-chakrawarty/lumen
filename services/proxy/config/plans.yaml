@@ -1,4 +1,5 @@
-# Plan / quota model (Phase 3 billing hooks into these IDs and limits).
+# Plan / quota / INR billing model (Phase 3).
+# Amounts are stored and configured in paise (₹1 = 100 paise).
 # Limits are monthly token totals (prompt + completion) per user.
 
 plans:
@@ -7,7 +8,9 @@ plans:
     description: Daily coding for individuals — all logical models, modest monthly cap
     monthlyTokenLimit: 2000000
     requestsPerMinute: 30
-    # free tier must work for owner daily use
+    pricePaise: 0
+    currency: INR
+    paid: false
     allowedTiers:
       - fast
       - standard
@@ -15,10 +18,14 @@ plans:
       - auto
 
   edu:
-    name: Education
-    description: Students / educators (INR billing later)
+    name: Edu
+    description: Free for verified .edu.in / .ac.in students and educators
     monthlyTokenLimit: 5000000
     requestsPerMinute: 60
+    pricePaise: 0
+    currency: INR
+    paid: false
+    eduOnly: true
     allowedTiers:
       - fast
       - standard
@@ -27,9 +34,26 @@ plans:
 
   pro:
     name: Pro
-    description: Higher monthly quota for power users
+    description: Higher monthly quota for power users — ₹2,000/month
     monthlyTokenLimit: 30000000
     requestsPerMinute: 120
+    pricePaise: 200000 # ₹2,000.00
+    currency: INR
+    paid: true
+    allowedTiers:
+      - fast
+      - standard
+      - strong
+      - auto
+
+  pro_plus:
+    name: Pro Plus
+    description: Maximum quota for heavy daily use — ₹3,000/month
+    monthlyTokenLimit: 75000000
+    requestsPerMinute: 180
+    pricePaise: 300000 # ₹3,000.00
+    currency: INR
+    paid: true
     allowedTiers:
       - fast
       - standard
@@ -37,3 +61,24 @@ plans:
       - auto
 
 defaultPlan: free
+
+# GST (India). Prices may be shown GST-inclusive or exclusive; invoices always break out GST.
+billing:
+  currency: INR
+  gstRatePercent: 18
+  # When true, plan pricePaise already includes GST (base = price / 1.18).
+  # When false, GST is added on top of pricePaise on invoices/checkout.
+  pricesGstInclusive: true
+  gracePeriodDays: 3
+  # Billing cycle for paid plans (Razorpay/Cashfree plan period)
+  interval: monthly
+  # How many billing cycles to request from the provider (Razorpay total_count)
+  subscriptionTotalCount: 120
+  publicBaseUrl: http://localhost:8787
+  # Light Hinglish copy on billing pages
+  copyLocale: en-IN
+
+# Domains that auto-qualify for the free Edu plan after email verification.
+eduEmailAllowlist:
+  - .edu.in
+  - .ac.in
