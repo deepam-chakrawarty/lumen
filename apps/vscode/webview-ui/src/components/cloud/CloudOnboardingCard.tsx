@@ -68,7 +68,7 @@ export function CloudOnboardingCard({
 
 			<ol className="m-0 flex list-none flex-col gap-1.5 p-0">
 				{isSignedOut ? (
-					<Step icon={<LogInIcon className="size-3" />} index={1} title="Sign in to Cline" />
+					<Step icon={<LogInIcon className="size-3" />} index={1} title="Sign in to Lumen" />
 				) : (
 					<Step done={isNoRepositories} icon={<CloudIcon className="size-3" />} index={1} title="Connect GitHub" />
 				)}
@@ -85,7 +85,7 @@ export function CloudOnboardingCard({
 				{isSignedOut ? (
 					<Button onClick={onSignIn} size="sm">
 						<LogInIcon className="size-3" />
-						Sign in to Cline
+						Sign in to Lumen
 					</Button>
 				) : (
 					<Button onClick={onConnect} size="sm">

@@ -1,5 +1,3 @@
-import { BUILD_CONSTANTS } from "../../constants"
-
 export interface PostHogClientConfig {
 	/**
 	 * The main API key for PostHog telemetry service.
@@ -37,12 +35,17 @@ const useDevEnv = process.env.IS_DEV === "true" || process.env.CLINE_ENVIRONMENT
  * defined in the .github/workflows/ext-vscode-publish-stable.yml workflow.
  * NOTE: The development environment variables should be retrieved from 1password shared vault.
  */
+/**
+ * Lumen fork: upstream Cline PostHog / data.cline.bot telemetry is disabled.
+ * Keys are cleared so isPostHogConfigValid() fails and TelemetryProviderFactory
+ * falls back to NoOp. Re-enable only with a Lumen-owned collector.
+ */
 export const posthogConfig: PostHogClientConfig = {
-	apiKey: BUILD_CONSTANTS.TELEMETRY_SERVICE_API_KEY,
-	errorTrackingApiKey: BUILD_CONSTANTS.ERROR_SERVICE_API_KEY,
-	host: "https://data.cline.bot",
+	apiKey: undefined,
+	errorTrackingApiKey: undefined,
+	host: "",
 	uiHost: useDevEnv ? "https://us.i.posthog.com" : "https://us.posthog.com",
-	enableErrorAutocapture: BUILD_CONSTANTS.ENABLE_ERROR_AUTOCAPTURE === "true",
+	enableErrorAutocapture: false,
 }
 
 const isTestEnv = process.env.E2E_TEST === "true" || process.env.IS_TEST === "true"

@@ -15,11 +15,18 @@ interface GenericProviderBaseUrlFieldConfig {
 	placeholder?: string
 }
 
+interface GenericProviderApiKeyFieldConfig {
+	label?: string
+	placeholder?: string
+	helpText?: string
+}
+
 export interface GenericProviderSettingsProps {
 	providerId: ProviderId
 	providerName: string
 	signupUrl?: string
 	baseUrlField?: GenericProviderBaseUrlFieldConfig
+	apiKeyField?: GenericProviderApiKeyFieldConfig
 	allowsCustomIds: boolean
 	showModelOptions: boolean
 	isPopup?: boolean
@@ -37,6 +44,7 @@ export const GenericProviderSettings = ({
 	providerName,
 	signupUrl,
 	baseUrlField,
+	apiKeyField,
 	allowsCustomIds,
 	showModelOptions,
 	isPopup,
@@ -77,9 +85,11 @@ export const GenericProviderSettings = ({
 	return (
 		<div>
 			<ApiKeyField
+				helpText={apiKeyField?.helpText}
 				initialValue={savedApiKeyMask}
+				label={apiKeyField?.label}
 				onChange={handleApiKeyChange}
-				placeholder="Enter API Key..."
+				placeholder={apiKeyField?.placeholder ?? "Enter API Key..."}
 				providerName={providerName}
 				signupUrl={signupUrl}
 			/>

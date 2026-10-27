@@ -71,7 +71,7 @@ const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ open, onClose, version, w
 							<a
 								aria-label="Join our Discord"
 								className="text-[var(--vscode-foreground)] hover:text-[var(--vscode-textLink-activeForeground)] transition-colors"
-								href="https://discord.gg/cline"
+								href="https://github.com/deepam-chakrawarty/lumen"
 								rel="noopener noreferrer"
 								target="_blank">
 								<DiscordIcon />

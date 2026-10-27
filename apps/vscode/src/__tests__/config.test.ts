@@ -80,9 +80,9 @@ describe("ClineEndpoint configuration", () => {
 
 			const config = ClineEndpoint.config
 			config.environment.should.not.equal(Environment.selfHosted)
-			// Should use production defaults
-			config.appBaseUrl.should.equal("https://app.cline.bot")
-			config.apiBaseUrl.should.equal("https://api.cline.bot")
+			// Lumen fork: production defaults are loopback placeholders (no cline.bot)
+			config.appBaseUrl.should.equal("http://127.0.0.1:9")
+			config.apiBaseUrl.should.equal("http://127.0.0.1:9")
 		})
 
 		it("should accept URLs with ports", async () => {
@@ -643,11 +643,11 @@ describe("ClineEndpoint configuration", () => {
 
 			await ClineEndpoint.initialize(bundledDir)
 
-			// Should use production defaults
+			// Lumen fork: production defaults are loopback placeholders (no cline.bot)
 			const config = ClineEndpoint.config
 			config.environment.should.not.equal(Environment.selfHosted)
-			config.appBaseUrl.should.equal("https://app.cline.bot")
-			config.apiBaseUrl.should.equal("https://api.cline.bot")
+			config.appBaseUrl.should.equal("http://127.0.0.1:9")
+			config.apiBaseUrl.should.equal("http://127.0.0.1:9")
 		})
 
 		it("should throw ClineConfigurationError for invalid bundled file", async () => {

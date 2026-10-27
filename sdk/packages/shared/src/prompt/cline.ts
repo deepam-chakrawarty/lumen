@@ -1,6 +1,7 @@
 import type { WorkspaceContext } from "../extensions/context";
 import { isClineProvider } from "../providers/utils";
 import type { WorkspaceInfo } from "../session/workspace";
+import { LUMEN_HINGLISH_PERSONA } from "./lumen-persona";
 import { DEFAULT_CLINE_SYSTEM_PROMPTS } from "./system";
 
 const WORKSPACE_CONFIGURATION_MARKER = "# Workspace Configuration";
@@ -185,7 +186,9 @@ export function buildClineSystemPrompt(
 
 	// Keep mode semantics shared across hosts, but omit the plan/act workflow
 	// instructions in YOLO mode. Caller rules apply in every mode.
+	// Lumen Hinglish persona is always injected once here so ACT and YOLO share it.
 	const effectiveRules = [
+		LUMEN_HINGLISH_PERSONA,
 		rules,
 		mode === "yolo" ? undefined : MODE_TAG_INSTRUCTIONS,
 		mode === "plan"

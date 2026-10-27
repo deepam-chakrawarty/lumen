@@ -6,6 +6,7 @@ import {
 	PLAN_MODE_INSTRUCTIONS_MANUAL_SWITCH,
 	processWorkspaceInfo,
 } from "./cline";
+import { LUMEN_HINGLISH_PERSONA } from "./lumen-persona";
 
 const BASE_OPTIONS = {
 	ide: "VS Code",
@@ -38,6 +39,18 @@ describe("processWorkspaceInfo", () => {
 });
 
 describe("buildClineSystemPrompt mode instructions", () => {
+	it("injects the Lumen Hinglish persona in act and yolo modes", () => {
+		const act = buildClineSystemPrompt({ ...BASE_OPTIONS, mode: "act" });
+		const yolo = buildClineSystemPrompt({ ...BASE_OPTIONS, mode: "yolo" });
+		expect(act).toContain(LUMEN_HINGLISH_PERSONA);
+		expect(yolo).toContain(LUMEN_HINGLISH_PERSONA);
+		expect(act).toContain("You are Lumen");
+		expect(yolo).toContain("You are Lumen");
+		// Tool-use contract must remain English / intact
+		expect(LUMEN_HINGLISH_PERSONA).toContain("tool-call syntax");
+		expect(LUMEN_HINGLISH_PERSONA).toContain("commit messages stay in English");
+	});
+
 	it("explains the user_input mode attribute in act mode", () => {
 		const prompt = buildClineSystemPrompt({ ...BASE_OPTIONS, mode: "act" });
 		expect(prompt).toContain(MODE_TAG_INSTRUCTIONS);

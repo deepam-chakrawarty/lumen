@@ -471,7 +471,7 @@ const ClineRulesToggleModal: React.FC = () => {
 									to include context and preferences for your projects or globally for every conversation.{" "}
 									<VSCodeLink
 										className="text-xs"
-										href="https://docs.cline.bot/features/cline-rules"
+										href="https://github.com/deepam-chakrawarty/lumen/features/cline-rules"
 										style={{ display: "inline", fontSize: "inherit" }}>
 										Docs
 									</VSCodeLink>
@@ -483,7 +483,7 @@ const ClineRulesToggleModal: React.FC = () => {
 									<span className="text-foreground font-bold">/workflow-name</span> in the chat.{" "}
 									<VSCodeLink
 										className="text-xs inline"
-										href="https://docs.cline.bot/features/slash-commands/workflows">
+										href="https://github.com/deepam-chakrawarty/lumen/features/slash-commands/workflows">
 										Docs
 									</VSCodeLink>
 								</p>
@@ -607,7 +607,7 @@ const ClineRulesToggleModal: React.FC = () => {
 									<span className="text-base">
 										Workflows are being deprecated. Use skills instead.{" "}
 										<VSCodeLink
-											href="https://docs.cline.bot/customization/skills"
+											href="https://github.com/deepam-chakrawarty/lumen/customization/skills"
 											style={{ display: "inline", fontSize: "inherit" }}>
 											Learn more
 										</VSCodeLink>
@@ -677,7 +677,7 @@ const ClineRulesToggleModal: React.FC = () => {
 											: "Toggle to enable/disable (chmod +x/-x)."}{" "}
 										<VSCodeLink
 											className="text-xs"
-											href="https://docs.cline.bot/features/hooks"
+											href="https://github.com/deepam-chakrawarty/lumen/features/hooks"
 											style={{ display: "inline", fontSize: "inherit" }}>
 											Docs
 										</VSCodeLink>

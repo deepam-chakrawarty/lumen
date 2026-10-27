@@ -3,7 +3,7 @@ import type { GenericProviderSettingsProps } from "./GenericProviderSettings"
 
 type GenericProviderSettingsConfig = Omit<GenericProviderSettingsProps, "currentMode" | "isPopup" | "showModelOptions">
 
-type GenericProviderPresentationOverride = Pick<GenericProviderSettingsConfig, "signupUrl" | "baseUrlField"> &
+type GenericProviderPresentationOverride = Pick<GenericProviderSettingsConfig, "signupUrl" | "baseUrlField" | "apiKeyField"> &
 	Partial<Pick<GenericProviderSettingsConfig, "allowsCustomIds">>
 
 const CUSTOM_PROVIDER_SETTINGS_IDS = new Set([
@@ -110,6 +110,18 @@ const GENERIC_PROVIDER_PRESENTATION_OVERRIDES: Record<string, GenericProviderPre
 	aiand: {
 		signupUrl: "https://console.aiand.com/",
 	},
+	lumen: {
+		apiKeyField: {
+			label: "Lumen plan key",
+			placeholder: "Enter Lumen plan key...",
+			helpText:
+				"Sent as a Bearer token to your Lumen proxy. Stored locally. Prefer this field over committing secrets to settings.json.",
+		},
+		baseUrlField: {
+			label: "Proxy base URL",
+			placeholder: "http://localhost:8787/v1",
+		},
+	},
 	"zai-coding-plan": {},
 }
 
@@ -173,6 +185,7 @@ const FALLBACK_GENERIC_PROVIDER_NAMES = {
 	"tencent-tokenhub": "Tencent TokenHub",
 	chutes: "Chutes",
 	aiand: "ai&",
+	lumen: "Lumen",
 	"zai-coding-plan": "Z.AI Coding Plan",
 } as const
 

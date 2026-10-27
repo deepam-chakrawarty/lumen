@@ -324,6 +324,7 @@ export {
 	PLAN_MODE_INSTRUCTIONS_MANUAL_SWITCH,
 	processWorkspaceInfo,
 } from "./prompt/cline";
+export { LUMEN_HINGLISH_PERSONA } from "./prompt/lumen-persona";
 export type {
 	ModeSwitchNotice,
 	ModeSwitchNoticeTracker,

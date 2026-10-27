@@ -144,7 +144,7 @@ const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = ({ rende
 									</VSCodeCheckbox>
 								</div>
 								<p className="text-xs text-(--vscode-descriptionForeground)">
-									When enabled, Cline will reuse existing terminal windows that aren't in the current working
+									When enabled, Lumen will reuse existing terminal windows that aren't in the current working
 									directory. Disable this if you experience issues with task lockout after a terminal command.
 								</p>
 							</div>
@@ -168,7 +168,7 @@ const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = ({ rende
 							))}
 						</VSCodeDropdown>
 						<p className="text-xs text-(--vscode-descriptionForeground) mt-1">
-							Select the default terminal Cline will use. 'Default' uses your VSCode global setting.
+							Select the default terminal Lumen will use. 'Default' uses your VSCode global setting.
 						</p>
 					</div>
 					<div className="mt-5 p-3 bg-(--vscode-textBlockQuote-background) rounded border border-(--vscode-textBlockQuote-border)">
@@ -176,7 +176,7 @@ const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = ({ rende
 							<strong>Having terminal issues?</strong> Check our{" "}
 							<a
 								className="text-(--vscode-textLink-foreground) underline hover:no-underline"
-								href="https://docs.cline.bot/troubleshooting/terminal-quick-fixes"
+								href="https://github.com/deepam-chakrawarty/lumen/troubleshooting/terminal-quick-fixes"
 								rel="noopener noreferrer"
 								target="_blank">
 								Terminal Quick Fixes
@@ -184,7 +184,7 @@ const TerminalSettingsSection: React.FC<TerminalSettingsSectionProps> = ({ rende
 							or the{" "}
 							<a
 								className="text-(--vscode-textLink-foreground) underline hover:no-underline"
-								href="https://docs.cline.bot/troubleshooting/terminal-integration-guide"
+								href="https://github.com/deepam-chakrawarty/lumen/troubleshooting/terminal-integration-guide"
 								rel="noopener noreferrer"
 								target="_blank">
 								Complete Troubleshooting Guide

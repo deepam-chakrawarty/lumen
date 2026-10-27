@@ -60,7 +60,7 @@ const CLINE_PASS_USER_TYPE_SELECTION: UserTypeSelection = {
 	title: "ClinePass",
 	description: "Low cost subscription plan for best open weights model.",
 	type: NEW_USER_TYPE.CLINE_PASS,
-	learnMoreUrl: "https://docs.cline.bot/getting-started/clinepass",
+	learnMoreUrl: "https://github.com/deepam-chakrawarty/lumen/getting-started/clinepass",
 }
 
 const BASE_USER_TYPE_SELECTIONS: UserTypeSelection[] = [

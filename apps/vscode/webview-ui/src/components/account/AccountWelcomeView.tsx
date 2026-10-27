@@ -24,7 +24,7 @@ export const AccountWelcomeView = () => {
 			<ClinePassWelcomeCallout />
 
 			<VSCodeButton className="w-full mb-4" disabled={isLoginLoading} onClick={handleSignIn}>
-				Sign up with Cline
+				Sign up with Lumen
 				{isLoginLoading && (
 					<span className="ml-1 animate-spin">
 						<span className="codicon codicon-refresh" />
@@ -35,8 +35,9 @@ export const AccountWelcomeView = () => {
 			<ClineAuthStatus message={authStatusMessage} />
 
 			<p className="text-(--vscode-descriptionForeground) text-xs text-center m-0">
-				By continuing, you agree to the <VSCodeLink href="https://cline.bot/tos">Terms of Service</VSCodeLink> and{" "}
-				<VSCodeLink href="https://cline.bot/privacy">Privacy Policy.</VSCodeLink>
+				By continuing, you agree to the{" "}
+				<VSCodeLink href="https://github.com/deepam-chakrawarty/lumen/tos">Terms of Service</VSCodeLink> and{" "}
+				<VSCodeLink href="https://github.com/deepam-chakrawarty/lumen">Privacy Policy.</VSCodeLink>
 			</p>
 		</div>
 	)
