@@ -226,6 +226,24 @@ function extractAssistantText(payload: any): string {
 	}
 }
 
+const SSE_KEEPALIVE_MS = 15_000
+
+function isClientDisconnect(err: unknown): boolean {
+	if (!err) return false
+	if (typeof err === "object" && err !== null && "name" in err && (err as { name: string }).name === "AbortError") {
+		return true
+	}
+	const msg = err instanceof Error ? err.message : String(err)
+	return (
+		msg.includes("Controller is already closed") ||
+		msg.includes("Invalid state") ||
+		msg.includes("aborted") ||
+		msg.includes("AbortError") ||
+		msg.includes("cancelled") ||
+		msg.includes("The operation was aborted")
+	)
+}
+
 async function streamPassthrough(
 	c: any,
 	db: AsyncDb,
@@ -250,13 +268,107 @@ async function streamPassthrough(
 	let buffer = ""
 	let completionText = ""
 	let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | null = null
+	let closed = false
+	let usageRecorded = false
+	// Avoid Bun vs DOM ReadableStreamDefaultReader generic mismatch (readMany).
+	let reader: {
+		read: () => Promise<{ done: boolean; value?: Uint8Array }>
+		cancel: (reason?: unknown) => Promise<void>
+	} | null = null
+	let keepAliveTimer: ReturnType<typeof setInterval> | null = null
+
+	const clientSignal: AbortSignal | undefined = c.req?.raw?.signal
+
+	const stopKeepAlive = () => {
+		if (keepAliveTimer) {
+			clearInterval(keepAliveTimer)
+			keepAliveTimer = null
+		}
+	}
+
+	const cancelUpstream = (reason?: unknown) => {
+		void reader?.cancel(reason).catch(() => {})
+	}
+
+	const recordUsageOnce = async () => {
+		if (usageRecorded) return
+		usageRecorded = true
+		const completionTokens = estimateCompletionTokens(completionText)
+		const finalUsage =
+			usage ??
+			({
+				prompt_tokens: ctx.promptEstimate,
+				completion_tokens: completionTokens,
+				total_tokens: ctx.promptEstimate + completionTokens,
+			} as const)
+		try {
+			await db.insertUsage({
+				id: newId("usage"),
+				user_id: ctx.auth.userId,
+				plan_key_id: ctx.auth.planKeyId,
+				logical_model: ctx.plan.logicalModel,
+				upstream_provider: ctx.route.provider,
+				upstream_model: ctx.route.model,
+				prompt_tokens: finalUsage.prompt_tokens,
+				completion_tokens: finalUsage.completion_tokens,
+				total_tokens: finalUsage.total_tokens,
+				streamed: 1,
+				status: "ok",
+			})
+		} catch (err) {
+			log.error("failed to persist stream usage", {
+				requestId: ctx.requestId,
+				error: err instanceof Error ? err.message : String(err),
+			})
+		}
+	}
 
 	const stream = new ReadableStream<Uint8Array>({
 		async start(controller) {
-			const reader = ctx.upstreamBody!.getReader()
+			const safeEnqueue = (bytes: Uint8Array) => {
+				if (closed) return
+				try {
+					controller.enqueue(bytes)
+				} catch (err) {
+					closed = true
+					if (!isClientDisconnect(err)) throw err
+				}
+			}
+
+			const safeClose = () => {
+				if (closed) return
+				closed = true
+				try {
+					controller.close()
+				} catch {
+					// already closed by client disconnect
+				}
+			}
+
+			reader = ctx.upstreamBody!.getReader()
+
+			const onClientAbort = () => {
+				if (closed) return
+				closed = true
+				log.info("client disconnected during stream", {
+					requestId: ctx.requestId,
+					reason: "request_aborted",
+				})
+				stopKeepAlive()
+				cancelUpstream("client_abort")
+			}
+			clientSignal?.addEventListener("abort", onClientAbort)
+
+			keepAliveTimer = setInterval(() => {
+				// SSE comment keeps intermediaries / Bun from treating the socket as idle.
+				safeEnqueue(encoder.encode(": keep-alive\n\n"))
+			}, SSE_KEEPALIVE_MS)
+
 			try {
-				while (true) {
-					const { done, value } = await reader.read()
+				while (!closed) {
+					const current = reader
+					if (!current) break
+					const { done, value } = await current.read()
 					if (done) break
 					const chunk = decoder.decode(value, { stream: true })
 					buffer += chunk
@@ -275,9 +387,9 @@ async function streamPassthrough(
 						})
 						out += rewritten + "\n"
 					}
-					if (out) controller.enqueue(encoder.encode(out))
+					if (out) safeEnqueue(encoder.encode(out))
 				}
-				if (buffer) {
+				if (!closed && buffer) {
 					const rewritten = rewriteSseLine(buffer, ctx.plan.logicalModel, {
 						onDelta: (t) => {
 							completionText += t
@@ -286,45 +398,47 @@ async function streamPassthrough(
 							usage = u
 						},
 					})
-					controller.enqueue(encoder.encode(rewritten))
+					safeEnqueue(encoder.encode(rewritten))
 				}
+				safeClose()
 			} catch (err) {
-				log.error("stream passthrough failed", {
-					requestId: ctx.requestId,
-					error: err instanceof Error ? err.message : String(err),
-				})
-				controller.error(err)
-				return
-			} finally {
-				const finalUsage =
-					usage ??
-					({
-						prompt_tokens: ctx.promptEstimate,
-						completion_tokens: estimateCompletionTokens(completionText),
-						total_tokens: ctx.promptEstimate + estimateCompletionTokens(completionText),
-					} as const)
-				try {
-					await db.insertUsage({
-						id: newId("usage"),
-						user_id: ctx.auth.userId,
-						plan_key_id: ctx.auth.planKeyId,
-						logical_model: ctx.plan.logicalModel,
-						upstream_provider: ctx.route.provider,
-						upstream_model: ctx.route.model,
-						prompt_tokens: finalUsage.prompt_tokens,
-						completion_tokens: finalUsage.completion_tokens,
-						total_tokens: finalUsage.total_tokens,
-						streamed: 1,
-						status: "ok",
-					})
-				} catch (err) {
-					log.error("failed to persist stream usage", {
+				if (closed || isClientDisconnect(err)) {
+					closed = true
+					log.info("client disconnected during stream", {
 						requestId: ctx.requestId,
 						error: err instanceof Error ? err.message : String(err),
 					})
+				} else {
+					log.error("stream passthrough failed", {
+						requestId: ctx.requestId,
+						error: err instanceof Error ? err.message : String(err),
+					})
+					if (!closed) {
+						closed = true
+						try {
+							controller.error(err)
+						} catch {
+							// ignore
+						}
+					}
 				}
-				controller.close()
+			} finally {
+				stopKeepAlive()
+				clientSignal?.removeEventListener("abort", onClientAbort)
+				cancelUpstream()
+				await recordUsageOnce()
 			}
+		},
+		cancel(reason) {
+			if (!closed) {
+				closed = true
+				log.info("client disconnected during stream", {
+					requestId: ctx.requestId,
+					reason: reason != null ? String(reason) : "cancel",
+				})
+			}
+			stopKeepAlive()
+			cancelUpstream(reason)
 		},
 	})
 

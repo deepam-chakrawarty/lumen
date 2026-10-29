@@ -119,6 +119,11 @@ export type AppConfig = {
 	plansConfigPath: string
 	upstreamTimeoutMs: number
 	upstreamConnectTimeoutMs: number
+	/**
+	 * Bun.serve idleTimeout in seconds (max 255). `0` disables the idle timer so
+	 * long-running SSE chat streams are not killed during upstream pauses.
+	 */
+	serverIdleTimeoutSeconds: number
 	models: ModelsConfig
 	plans: PlansConfig
 	/** Public URL used for checkout return / webhook docs (no trailing slash). */
@@ -168,6 +173,20 @@ function parsePaymentProvider(raw: string | undefined): PaymentProviderId {
 	throw new Error(`Unknown PAYMENT_PROVIDER '${raw}'. Use razorpay | cashfree | mock`)
 }
 
+/** Bun.serve idleTimeout is seconds; 0 disables; Bun caps at 255. */
+export function parseServerIdleTimeoutSeconds(raw: string | undefined): number {
+	const n = Number(raw ?? "0")
+	if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+		throw new Error(
+			`SERVER_IDLE_TIMEOUT_SECONDS must be an integer >= 0 (got ${JSON.stringify(raw)}); use 0 to disable`,
+		)
+	}
+	if (n > 255) {
+		throw new Error("SERVER_IDLE_TIMEOUT_SECONDS max is 255 (Bun limit); use 0 to disable")
+	}
+	return n
+}
+
 export function loadConfig(): AppConfig {
 	const models = loadModelsConfig()
 	const plans = loadPlansConfig()
@@ -194,6 +213,7 @@ export function loadConfig(): AppConfig {
 		plansConfigPath: resolve(PROXY_ROOT, process.env.PLANS_CONFIG || "./config/plans.yaml"),
 		upstreamTimeoutMs: Number(process.env.UPSTREAM_TIMEOUT_MS || 60_000),
 		upstreamConnectTimeoutMs: Number(process.env.UPSTREAM_CONNECT_TIMEOUT_MS || 10_000),
+		serverIdleTimeoutSeconds: parseServerIdleTimeoutSeconds(process.env.SERVER_IDLE_TIMEOUT_SECONDS),
 		models,
 		plans: {
 			...plans,

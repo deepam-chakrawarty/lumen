@@ -61,9 +61,12 @@ export async function callUpstreamChat(
 	}
 
 	const controller = new AbortController()
+	// Timeout covers waiting for response headers only. Cleared once headers
+	// arrive so long SSE bodies (Nemotron reasoning / tool calls) are not aborted.
 	const timeout = setTimeout(() => controller.abort("upstream_timeout"), config.upstreamTimeoutMs)
 	const onAbort = () => controller.abort("client_abort")
 	opts.signal?.addEventListener("abort", onAbort)
+	let detachClientAbort = true
 
 	try {
 		const res = await fetch(url, {
@@ -99,12 +102,23 @@ export async function callUpstreamChat(
 		}
 
 		if (opts.stream) {
+			// Keep client abort linked for the body lifetime so disconnect
+			// cancels the upstream fetch; drop the headers-only timeout.
+			clearTimeout(timeout)
+			detachClientAbort = false
+			const upstreamBody = res.body
+			const body =
+				upstreamBody && opts.signal
+					? wrapStreamDetachAbort(upstreamBody, () => {
+							opts.signal?.removeEventListener("abort", onAbort)
+						})
+					: upstreamBody
 			return {
 				ok: true,
 				route,
 				status: res.status,
 				headers: res.headers,
-				body: res.body,
+				body,
 			}
 		}
 
@@ -134,8 +148,44 @@ export async function callUpstreamChat(
 		}
 	} finally {
 		clearTimeout(timeout)
-		opts.signal?.removeEventListener("abort", onAbort)
+		if (detachClientAbort) {
+			opts.signal?.removeEventListener("abort", onAbort)
+		}
 	}
+}
+
+/** Ensure the client-abort listener is removed when the upstream body ends or is cancelled. */
+function wrapStreamDetachAbort(
+	source: ReadableStream<Uint8Array>,
+	detach: () => void,
+): ReadableStream<Uint8Array> {
+	let detached = false
+	const once = () => {
+		if (detached) return
+		detached = true
+		detach()
+	}
+	const reader = source.getReader()
+	return new ReadableStream<Uint8Array>({
+		async pull(controller) {
+			try {
+				const { done, value } = await reader.read()
+				if (done) {
+					once()
+					controller.close()
+					return
+				}
+				controller.enqueue(value)
+			} catch (err) {
+				once()
+				controller.error(err)
+			}
+		},
+		cancel(reason) {
+			once()
+			return reader.cancel(reason)
+		},
+	})
 }
 
 function summarizeUpstreamError(status: number, bodyText: string): string {

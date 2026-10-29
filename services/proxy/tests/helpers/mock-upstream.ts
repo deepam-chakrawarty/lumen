@@ -10,7 +10,14 @@ export type MockBehavior = {
 
 export type MockResponse =
 	| { type: "json"; status?: number; body: unknown; delayMs?: number }
-	| { type: "sse"; status?: number; events: string[]; delayMs?: number }
+	| {
+			type: "sse"
+			status?: number
+			events: string[]
+			delayMs?: number
+			/** When set, emit each SSE event as its own chunk after this delay (for cancel/keepalive tests). */
+			chunkDelayMs?: number
+	  }
 	| { type: "error"; status: number; body?: unknown; delayMs?: number }
 	| { type: "timeout"; delayMs?: number }
 
@@ -68,6 +75,32 @@ export async function startMockUpstream(behavior: MockBehavior = {}): Promise<{
 			}
 
 			if (response.type === "sse") {
+				const chunkDelayMs = response.chunkDelayMs ?? 0
+				if (chunkDelayMs > 0) {
+					const events = response.events
+					const stream = new ReadableStream<Uint8Array>({
+						async start(controller) {
+							const enc = new TextEncoder()
+							try {
+								for (const event of events) {
+									await Bun.sleep(chunkDelayMs)
+									controller.enqueue(enc.encode(`${event}\n`))
+								}
+								controller.close()
+							} catch {
+								try {
+									controller.close()
+								} catch {
+									// ignore
+								}
+							}
+						},
+					})
+					return new Response(stream, {
+						status: response.status ?? 200,
+						headers: { "Content-Type": "text/event-stream" },
+					})
+				}
 				const payload = response.events.join("\n") + (response.events.at(-1) === "data: [DONE]" ? "\n" : "\n\n")
 				return new Response(payload, {
 					status: response.status ?? 200,

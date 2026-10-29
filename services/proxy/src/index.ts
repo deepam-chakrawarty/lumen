@@ -13,17 +13,22 @@ async function main(): Promise<void> {
 		port: config.port,
 		db: config.databaseUrl.startsWith("postgres") ? "postgres" : "sqlite",
 		adminConfigured: Boolean(config.adminSecret),
+		idleTimeoutSeconds: config.serverIdleTimeoutSeconds,
 	})
 
+	// idleTimeout: Bun default is 10s, which kills SSE chat streams during
+	// Nemotron/Qwen pauses. 0 disables; otherwise seconds (Bun max 255).
 	const server = Bun.serve({
 		hostname: config.host,
 		port: config.port,
+		idleTimeout: config.serverIdleTimeoutSeconds,
 		fetch: app.fetch,
 	})
 
 	log.info("lumen proxy listening", {
 		url: `http://${server.hostname}:${server.port}/v1`,
 		health: `http://${server.hostname}:${server.port}/health`,
+		idleTimeoutSeconds: config.serverIdleTimeoutSeconds,
 	})
 }
 
