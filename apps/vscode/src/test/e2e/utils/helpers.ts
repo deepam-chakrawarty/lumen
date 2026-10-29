@@ -88,7 +88,8 @@ export class E2ETestHelper {
 
 				try {
 					const title = await frame.title()
-					if (title.startsWith("Cline")) {
+					// Production HTML titles the frame "Lumen"; HMR fallback still says "Cline".
+					if (title.startsWith("Lumen") || title.startsWith("Cline")) {
 						this.cachedFrame = frame
 						return frame
 					}
@@ -272,7 +273,7 @@ export class E2ETestHelper {
 	}
 
 	public static async openClineSidebar(page: Page): Promise<void> {
-		await page.getByRole("tab", { name: /Cline/ }).locator("a").click()
+		await page.getByRole("tab", { name: /Lumen/ }).locator("a").click()
 	}
 
 	public static async runCommandPalette(page: Page, command: string): Promise<void> {

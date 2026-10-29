@@ -71,7 +71,8 @@ describe("local cloud development ownership", () => {
 			vi.stubEnv("CLINE_LOCAL_CLOUD_URL", "https://example.com")
 			expect(() => ClineEnv.config()).toThrow("loopback")
 			ClineEnv.setEnvironment(Environment.production)
-			expect(ClineEnv.config().appBaseUrl).toBe("https://app.cline.bot")
+			// Lumen fork: production defaults are loopback placeholders (no cline.bot)
+			expect(ClineEnv.config().appBaseUrl).toBe("http://127.0.0.1:9")
 		} finally {
 			await Promise.all([development.dispose(), development.dispose()])
 			await expect(fs.access(development.clineDir)).rejects.toThrow()

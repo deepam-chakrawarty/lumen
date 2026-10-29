@@ -74,7 +74,7 @@ describe("TaskTargetPanel", () => {
 		render(<TaskTargetPanel />)
 
 		expect(await screen.findByText("Run Cline in the cloud")).toBeInTheDocument()
-		expect(screen.getByRole("button", { name: /Sign in to Cline/i })).toBeInTheDocument()
+		expect(screen.getByRole("button", { name: /Sign in to Lumen/i })).toBeInTheDocument()
 	})
 
 	it("names the host editor in the onboarding copy", async () => {

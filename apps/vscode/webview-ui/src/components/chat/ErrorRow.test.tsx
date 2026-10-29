@@ -117,7 +117,7 @@ describe("ErrorRow", () => {
 		const clineignoreMessage = { ...mockMessage, text: "/path/to/file.txt" }
 		render(<ErrorRow errorType="clineignore_error" message={clineignoreMessage} />)
 
-		expect(screen.getByText(/Cline tried to access/)).toBeInTheDocument()
+		expect(screen.getByText(/Lumen tried to access/)).toBeInTheDocument()
 		expect(screen.getByText("/path/to/file.txt")).toBeInTheDocument()
 	})
 
@@ -382,7 +382,7 @@ describe("ErrorRow", () => {
 
 			expect(screen.queryByText("Authentication failed")).not.toBeInTheDocument()
 			expect(screen.getByText(/Whoops looks like you're logged out/)).toBeInTheDocument()
-			expect(screen.getByText("Sign in to Cline")).toBeInTheDocument()
+			expect(screen.getByText("Sign in to Lumen")).toBeInTheDocument()
 		})
 
 		it("renders a 404 as the real message plus model/endpoint guidance, never the sign-in prompt", async () => {
@@ -403,7 +403,7 @@ describe("ErrorRow", () => {
 			expect(screen.getByText(/The model or endpoint was not found/)).toBeInTheDocument()
 			expect(screen.getByText(/Check the model ID and base URL/)).toBeInTheDocument()
 			expect(screen.queryByText(/logged out/)).not.toBeInTheDocument()
-			expect(screen.queryByText("Sign in to Cline")).not.toBeInTheDocument()
+			expect(screen.queryByText("Sign in to Lumen")).not.toBeInTheDocument()
 		})
 
 		it("does not repeat guidance the host already appended to a not-found message", async () => {
@@ -440,7 +440,7 @@ describe("ErrorRow", () => {
 
 			expect(screen.getByText(rawMessage)).toBeInTheDocument()
 			expect(screen.queryByText(/logged out/)).not.toBeInTheDocument()
-			expect(screen.queryByText("Sign in to Cline")).not.toBeInTheDocument()
+			expect(screen.queryByText("Sign in to Lumen")).not.toBeInTheDocument()
 		})
 
 		it("renders PowerShell troubleshooting link when error mentions PowerShell", async () => {
