@@ -28,7 +28,7 @@ const mock = await startMockUpstream({
 		},
 		{
 			type: "sse",
-			events: toolCallSseEvents("nvidia/nemotron-3-nano-30b-a3b"),
+			events: toolCallSseEvents("nvidia/nemotron-3.5-lightning-30b-a3b"),
 		},
 	],
 })

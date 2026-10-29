@@ -6,11 +6,11 @@ const models = loadModelsConfig()
 const small = { promptTokens: 100, maxOutputTokens: 256 }
 
 describe("resolveRoutePlan", () => {
-	test("lumen-fast starts with Nemotron Nano", () => {
+	test("lumen-fast starts with Nemotron Lightning", () => {
 		const plan = resolveRoutePlan(models, "lumen-fast", { messages: [] }, small)
 		expect(plan.logicalModel).toBe("lumen-fast")
-		expect(plan.routes[0]?.model).toBe("nvidia/nemotron-3-nano-30b-a3b")
-		expect(plan.routes[0]?.contextWindow).toBe(128000)
+		expect(plan.routes[0]?.model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b")
+		expect(plan.routes[0]?.contextWindow).toBe(1000000)
 		expect(plan.routes.length).toBeGreaterThan(1)
 	})
 

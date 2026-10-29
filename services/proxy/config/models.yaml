@@ -32,25 +32,10 @@ defaultMaxOutputTokens: 8192
 logicalModels:
   lumen-fast:
     name: Lumen Fast
-    description: Fast edits and quick completions (NVIDIA Nemotron Nano)
+    description: Fast edits and quick completions (NVIDIA Nemotron Lightning)
     tier: fast
-    # Primary: Nemotron 3 Nano 30B-A3B (MoE; ~3B active) — docs.api.nvidia.com LLM APIs
+    # Primary: Nemotron 3.5 Lightning. Nemotron 3 Nano 30B was retired by NVIDIA on 2026-09-01 (HTTP 410).
     routes:
-      - provider: nvidia
-        model: nvidia/nemotron-3-nano-30b-a3b
-        # API overview: "Maximum input size: 128K tokens" (model card/HF advertise up to 1M / 262K default — use API limit)
-        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b
-        contextWindow: 128000
-        # Infer schema max_tokens range 1–32768
-        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-nano-30b-a3b-infer
-        maxOutputTokens: 32768
-      # Alternate Nano family on same NIM endpoint
-      - provider: nvidia
-        model: nvidia/nvidia-nemotron-nano-9b-v2
-        # API overview: "Context length up to 128K" (build.nvidia.com lists 131K — use API 128K)
-        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nvidia-nemotron-nano-9b-v2
-        contextWindow: 128000
-        # Output "Sequences up to 128K" stated; NIM infer page for this model does not publish a distinct max_tokens cap — omit maxOutputTokens
       - provider: nvidia
         model: nvidia/nemotron-3.5-lightning-30b-a3b
         # API model summary: "Context Length Up to 1M tokens" / "Maximum context length up to 1M tokens"
@@ -60,6 +45,13 @@ logicalModels:
         # Infer schema max_tokens range 1–32768
         # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-5-lightning-30b-a3b-infer
         maxOutputTokens: 32768
+      # Alternate Nano family on same NIM endpoint
+      - provider: nvidia
+        model: nvidia/nvidia-nemotron-nano-9b-v2
+        # API overview: "Context length up to 128K" (build.nvidia.com lists 131K — use API 128K)
+        # Source: https://docs.api.nvidia.com/nim/reference/nvidia-nvidia-nemotron-nano-9b-v2
+        contextWindow: 128000
+        # Output "Sequences up to 128K" stated; NIM infer page for this model does not publish a distinct max_tokens cap — omit maxOutputTokens
 
   lumen-standard:
     name: Lumen Standard

@@ -35,7 +35,7 @@ beforeAll(async () => {
 					id: "c1",
 					object: "chat.completion",
 					created: 1,
-					model: "nvidia/nemotron-3-nano-30b-a3b",
+					model: "nvidia/nemotron-3.5-lightning-30b-a3b",
 					choices: [{ index: 0, message: { role: "assistant", content: "ok" }, finish_reason: "stop" }],
 					usage: { prompt_tokens: 11, completion_tokens: 3, total_tokens: 14 },
 				},
@@ -43,7 +43,7 @@ beforeAll(async () => {
 			// 2) streaming tool calls
 			{
 				type: "sse",
-				events: toolCallSseEvents("nvidia/nemotron-3-nano-30b-a3b"),
+				events: toolCallSseEvents("nvidia/nemotron-3.5-lightning-30b-a3b"),
 			},
 			// 3) fallback: first upstream 429, second ok
 			{ type: "error", status: 429, body: { error: { message: "rate limited" } } },
@@ -92,6 +92,9 @@ beforeAll(async () => {
 		monthlyTokenLimit: 20,
 		requestsPerMinute: 1000,
 		allowedTiers: ["fast", "standard", "strong", "auto"],
+		pricePaise: 0,
+		currency: "INR",
+		paid: false,
 	}
 
 	const gen2 = generatePlanKey()
@@ -144,11 +147,18 @@ async function api(
 	return app.request(path, { ...init, headers })
 }
 
+function readJson<T>(res: Response): Promise<T> {
+	return res.json() as Promise<T>
+}
+
 describe("lumen proxy integration", () => {
 	test("health is public", async () => {
 		const res = await app.request("/health")
 		expect(res.status).toBe(200)
-		const json = await res.json()
+		const json = await readJson<{
+			status: string
+			providers: { nvidia: { configured: boolean } }
+		}>(res)
 		expect(json.status).toBe("ok")
 		expect(json.providers.nvidia.configured).toBe(true)
 	})
@@ -156,7 +166,7 @@ describe("lumen proxy integration", () => {
 	test("bad key returns OpenAI-style 401", async () => {
 		const res = await api("/v1/models", { key: "lmn_invalid" })
 		expect(res.status).toBe(401)
-		const json = await res.json()
+		const json = await readJson<{ error: { code: string; message: string } }>(res)
 		expect(json.error.code).toBe("invalid_api_key")
 		expect(json.error.message).toContain("plan key")
 	})
@@ -164,8 +174,8 @@ describe("lumen proxy integration", () => {
 	test("lists logical models", async () => {
 		const res = await api("/v1/models")
 		expect(res.status).toBe(200)
-		const json = await res.json()
-		const ids = json.data.map((m: { id: string }) => m.id).sort()
+		const json = await readJson<{ data: { id: string }[] }>(res)
+		const ids = json.data.map((m) => m.id).sort()
 		expect(ids).toEqual(["lumen-auto", "lumen-fast", "lumen-standard", "lumen-strong"].sort())
 	})
 
@@ -179,14 +189,21 @@ describe("lumen proxy integration", () => {
 			}),
 		})
 		expect(res.status).toBe(200)
-		const json = await res.json()
+		const json = await readJson<{
+			model: string
+			choices: { message: { content: string } }[]
+			usage: { total_tokens: number }
+		}>(res)
 		expect(json.model).toBe("lumen-fast")
 		expect(json.choices[0].message.content).toBe("ok")
 		expect(json.usage.total_tokens).toBe(14)
 
 		const usage = await api("/v1/usage")
 		expect(usage.status).toBe(200)
-		const u = await usage.json()
+		const u = await readJson<{
+			tokens: { used: number }
+			recent: { upstream_model: string }[]
+		}>(usage)
 		expect(u.tokens.used).toBeGreaterThanOrEqual(14)
 		expect(u.recent[0].upstream_model).toBeTruthy()
 	})
@@ -231,10 +248,10 @@ describe("lumen proxy integration", () => {
 			}),
 		})
 		expect(res.status).toBe(200)
-		const json = await res.json()
+		const json = await readJson<{ choices: { message: { content: string } }[] }>(res)
 		expect(json.choices[0].message.content).toBe("fallback ok")
 		expect(mock.requests.length - before).toBe(2)
-		expect(mock.requests[before]?.body?.model).toBe("nvidia/nemotron-3-nano-30b-a3b")
+		expect(mock.requests[before]?.body?.model).toBe("nvidia/nemotron-3.5-lightning-30b-a3b")
 		expect(mock.requests[before + 1]?.body?.model).toBe("nvidia/nvidia-nemotron-nano-9b-v2")
 	})
 
@@ -248,7 +265,7 @@ describe("lumen proxy integration", () => {
 			}),
 		})
 		expect(res.status).toBe(429)
-		const json = await res.json()
+		const json = await readJson<{ error: { code: string; type: string } }>(res)
 		expect(json.error.code).toBe("insufficient_quota")
 		expect(json.error.type).toBe("insufficient_quota")
 	})
@@ -263,7 +280,7 @@ describe("lumen proxy integration", () => {
 			body: JSON.stringify({ userId: "user_admin", plan: "pro", label: "cli" }),
 		})
 		expect(created.status).toBe(201)
-		const body = await created.json()
+		const body = await readJson<{ plan_key: string; plan_id: string; id: string }>(created)
 		expect(body.plan_key.startsWith("lmn_")).toBe(true)
 		expect(body.plan_id).toBe("pro")
 
@@ -271,8 +288,8 @@ describe("lumen proxy integration", () => {
 			headers: { "x-admin-secret": "test-admin" },
 		})
 		expect(listed.status).toBe(200)
-		const list = await listed.json()
-		expect(list.data.some((k: { id: string }) => k.id === body.id)).toBe(true)
+		const list = await readJson<{ data: { id: string }[] }>(listed)
+		expect(list.data.some((k) => k.id === body.id)).toBe(true)
 
 		const revoked = await app.request(`/admin/keys/${body.id}/revoke`, {
 			method: "POST",

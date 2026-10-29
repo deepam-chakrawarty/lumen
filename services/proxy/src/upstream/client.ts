@@ -25,7 +25,8 @@ export type UpstreamFailure = {
 
 export type UpstreamResult = UpstreamSuccess | UpstreamFailure
 
-const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504])
+// 410 Gone means the model was retired. Try the next route instead of failing the turn.
+const RETRYABLE_STATUS = new Set([408, 409, 410, 425, 429, 500, 502, 503, 504])
 
 export function isRetryableStatus(status: number): boolean {
 	return RETRYABLE_STATUS.has(status)
@@ -49,7 +50,7 @@ export async function callUpstreamChat(
 	}
 
 	const url = `${baseUrl}/chat/completions`
-	const payload = { ...body, model: route.model }
+	const payload: any = { ...body, model: route.model }
 	if (opts.stream) {
 		payload.stream = true
 		const so =
