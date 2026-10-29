@@ -48,9 +48,9 @@ describe("useClinePassPromo", () => {
 		mockExtensionState()
 	})
 
-	it("is enabled when no remote config restricts providers", () => {
+	it("stays disabled because Lumen does not offer ClinePass", () => {
 		const { result } = renderHook(() => useClinePassPromo())
-		expect(result.current.isClinePassEnabled).toBe(true)
+		expect(result.current.isClinePassEnabled).toBe(false)
 	})
 
 	it("is disabled in self-hosted mode", () => {
@@ -71,10 +71,10 @@ describe("useClinePassPromo", () => {
 		expect(result.current.isClinePassEnabled).toBe(false)
 	})
 
-	it("stays enabled when the org remote config includes cline-pass", () => {
+	it("stays disabled even when the org remote config includes cline-pass", () => {
 		mockExtensionState({ remoteConfigSettings: { remoteConfiguredProviders: ["anthropic", "cline-pass"] } })
 		const { result } = renderHook(() => useClinePassPromo())
-		expect(result.current.isClinePassEnabled).toBe(true)
+		expect(result.current.isClinePassEnabled).toBe(false)
 	})
 
 	it("detects when either mode already uses the ClinePass provider", () => {

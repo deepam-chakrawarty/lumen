@@ -8,22 +8,16 @@ import { UiServiceClient } from "@/services/grpc-client"
 export const CLINE_PASS_PROVIDER_ID = "cline-pass"
 
 /**
- * Shared state + actions for the ClinePass promotional surfaces (home banner,
- * account page card, settings provider hint). Promotions are hidden in
- * self-hosted mode (ClinePass is a cloud subscription) and behind org
- * remote-config provider allowlists so they never offer a provider the
- * organization disallows.
+ * Shared state for the old ClinePass promotional surfaces. Lumen does not
+ * sell ClinePass, so those surfaces stay hidden.
  */
 export function useClinePassPromo() {
-	const { apiConfiguration, environment, navigateToSettings, remoteConfigSettings, mode, planActSeparateModelsSetting } =
-		useExtensionState()
+	const { apiConfiguration, navigateToSettings, mode, planActSeparateModelsSetting } = useExtensionState()
 	const { clineUser } = useClineAuth()
 	const { handleModeFieldChange } = useApiConfigurationHandlers()
 
-	const isSelfHostedOrUnknown = !environment || environment === "selfHosted"
-	const remoteProviders: string[] = remoteConfigSettings?.remoteConfiguredProviders || []
-	const isBlockedByRemoteConfig = remoteProviders.length > 0 && !remoteProviders.includes(CLINE_PASS_PROVIDER_ID)
-	const isClinePassEnabled = !isSelfHostedOrUnknown && !isBlockedByRemoteConfig
+	// Lumen does not sell ClinePass. Keep every promo surface off.
+	const isClinePassEnabled = false
 
 	// Mirrors the switch action's scope: with separate plan/act models the
 	// promos only affect (and therefore only reflect) the current mode.
